@@ -1,0 +1,22 @@
+[Unit]
+Description=Dalun research API
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=dalun
+Group=dalun
+WorkingDirectory=/opt/dalun/backend
+Environment=DALUN_ENV_FILE=/etc/dalun/native.env
+ExecStart=/opt/dalun/web-venv/bin/python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/dalun
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target

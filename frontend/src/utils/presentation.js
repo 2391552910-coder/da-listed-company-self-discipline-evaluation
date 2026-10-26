@@ -1,6 +1,7 @@
-export const statusName = value => ({ queued:'排队中', running:'运行中', succeeded:'已完成', partial:'部分完成', failed:'失败', cancelled:'已取消', budget_exhausted:'预算耗尽', ready:'就绪', staging:'构建中', done:'已解析' }[value] || value || '未知')
+export const statusName = value => ({ pending:'待排队', queued:'排队中', running:'运行中', cancelling:'取消处理中', succeeded:'已完成', partial:'部分完成', failed:'失败', cancelled:'已取消', budget_exhausted:'预算耗尽', not_run:'未运行', uncertain:'调用结果未知', ready:'就绪', staging:'构建中', done:'已解析' }[value] || value || '未知')
 export const statusType = value => value === 'succeeded' || value === 'ready' || value === 'done' ? 'success' : ['failed','budget_exhausted'].includes(value) ? 'danger' : ['cancelled','partial'].includes(value) ? 'warning' : 'info'
 export const kindName = value => ({parse:'文档解析',index:'索引构建',context:'上下文组装',evaluation:'模型评价'}[value] || value || '—')
+export const modeName = value => ({dual_fixed:'固定双源',dual_agent:'Agent 扩展'}[value] || value || '方法见冻结配置')
 export const short = value => value ? String(value).slice(0,8) : '—'
 export const pretty = value => JSON.stringify(value ?? null,null,2)
 export const formatDate = value => {

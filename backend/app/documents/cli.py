@@ -52,6 +52,15 @@ def main(argv=None):
     show_evaluation=sub.add_parser("show-evaluation");show_evaluation.add_argument("run_id")
     export=sub.add_parser("export")
     export.add_argument("run_id");export.add_argument("--format",choices=["html","pdf"],default="html");export.add_argument("--key")
+    sub.add_parser("experiments")
+    experiment=sub.add_parser("create-experiment");experiment.add_argument("request_file",type=Path);experiment.add_argument("--key")
+    for name in ("show-experiment","dispatch-experiment","cancel-experiment"):
+        command=sub.add_parser(name);command.add_argument("experiment_id")
+    for name in ("rate-experiment","import-experiment-history"):
+        command=sub.add_parser(name);command.add_argument("experiment_id");command.add_argument("request_file",type=Path);command.add_argument("--key")
+    attach=sub.add_parser("attach-experiment-run");attach.add_argument("experiment_id");attach.add_argument("run_id");attach.add_argument("--label",default="")
+    export_experiment=sub.add_parser("export-experiment");export_experiment.add_argument("experiment_id")
+    export_experiment.add_argument("--format",choices=["json","csv"],default="json");export_experiment.add_argument("--output",type=Path,required=True)
     args=parser.parse_args(argv)
     docs=Documents(Settings.from_env());indexes=Indexes(docs)
     from app.documents.jobs import JobControl
@@ -90,6 +99,23 @@ def main(argv=None):
         elif args.command=="export":
             from app.reports.service import Reports
             result=Reports(docs).create(args.run_id,format=args.format,key=args.key)
+        elif "experiment" in args.command:
+            from app.experiments.service import Experiments
+            experiments=Experiments(docs)
+            if args.command=="experiments":result=experiments.list()
+            elif args.command=="create-experiment":result=experiments.create(**json.loads(args.request_file.read_text(encoding="utf-8")),key=args.key)
+            elif args.command=="show-experiment":result=experiments.get(args.experiment_id)
+            elif args.command=="dispatch-experiment":result=experiments.dispatch(args.experiment_id)
+            elif args.command=="cancel-experiment":result=experiments.cancel(args.experiment_id)
+            elif args.command=="rate-experiment":result=experiments.add_rating(args.experiment_id,**json.loads(args.request_file.read_text(encoding="utf-8")),key=args.key)
+            elif args.command=="import-experiment-history":result=experiments.import_history(args.experiment_id,**json.loads(args.request_file.read_text(encoding="utf-8")),key=args.key)
+            elif args.command=="attach-experiment-run":result=experiments.attach(args.experiment_id,args.run_id,args.label)
+            else:
+                content,result=experiments.export(args.experiment_id,args.format)
+                if args.output.exists():raise DomainError("OUTPUT_EXISTS","输出文件已存在，请选择新文件",409)
+                args.output.parent.mkdir(parents=True,exist_ok=True)
+                with args.output.open("xb") as destination:destination.write(content)
+                result=result|{"saved":True}
         print(json.dumps(result,ensure_ascii=False,indent=2))
         return 0
     except DomainError as error:

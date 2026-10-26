@@ -60,7 +60,9 @@ class Database:
             upgrade_stage3(session)
             from app.documents.schema_v4 import upgrade_stage4
             upgrade_stage4(session)
+            from app.documents.schema_v5 import upgrade_stage6
+            upgrade_stage6(session)
 
     def ready(self):
         with self.session() as session:
-            return session.one("SELECT revision FROM t_document_schema WHERE revision=4") is not None
+            return session.one("SELECT revision FROM t_document_schema WHERE revision=5") is not None

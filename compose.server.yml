@@ -1,0 +1,14 @@
+# Optional server tuning; keep the controlled-network bind by default.
+# docker compose --env-file deploy/server.env -f compose.yml -f compose.server.yml up -d --build
+services:
+  backend:
+    security_opt: ["no-new-privileges:true"]
+    pids_limit: 256
+    mem_limit: 2g
+  worker:
+    security_opt: ["no-new-privileges:true"]
+    pids_limit: 256
+    mem_limit: 4g
+  frontend:
+    security_opt: ["no-new-privileges:true"]
+    pids_limit: 128

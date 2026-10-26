@@ -1,6 +1,6 @@
 <template>
   <div class="page-shell">
-    <div class="page-heading"><div><h2>评价工作台</h2><p class="muted">固定双源检索流程 · 冻结配置与证据 · 单题或四维评价</p></div><el-button @click="$router.push('/documents')">文档与索引</el-button></div>
+    <div class="page-heading"><div><h2>评价工作台</h2><p class="muted">双源证据 · 冻结配置 · 固定流程与受预算约束的 Agent</p></div><el-button @click="$router.push('/documents')">文档与索引</el-button></div>
     <el-alert title="评价调用已配置的真实模型服务。模型判断、引文机械校验与人工复核分开记录；当前不生成第三章数值指数。" type="info" :closable="false" />
     <el-row :gutter="20" class="section">
       <el-col :xs="24" :lg="10">
@@ -11,6 +11,13 @@
             <el-form-item label="报告年度"><el-input-number v-model="form.report_year" :min="1990" :max="2100" /></el-form-item>
             <el-form-item label="冻结索引版本"><el-select data-testid="evaluation-index" v-model="form.index_id" class="full" placeholder="选择包含该公司年度的就绪索引"><el-option v-for="index in indexes" :key="index.id" :value="index.id" :disabled="index.status!=='ready'" :label="index.profile+' · '+statusName(index.status)+' · '+short(index.id)" /></el-select></el-form-item>
             <el-alert v-if="!indexes.some(row=>row.status==='ready')" title="暂无就绪索引。请导入年报和法规，解析后构建索引。" type="warning" :closable="false" />
+            <el-form-item label="运行方法"><el-radio-group data-testid="evaluation-mode" v-model="mode"><el-radio value="dual_fixed">固定双源</el-radio><el-radio value="dual_agent">Agent 扩展</el-radio></el-radio-group></el-form-item>
+            <template v-if="mode==='dual_agent'">
+              <el-alert title="Agent 通过规划决定是否补检索，并保存草稿、核验和可选修订。使用相同来源范围，增加的调用不代表评价质量必然提升。" type="info" :closable="false" />
+              <el-form-item label="最多规划轮次"><el-input-number data-testid="agent-max-rounds" v-model="agent.max_rounds" :min="1" :max="3" /></el-form-item>
+              <el-form-item label="全运行补检索次数上限"><el-input-number data-testid="agent-supplemental-budget" v-model="agent.max_supplemental_calls" :min="0" :max="12" /><span class="field-note">所有题目共享，0 表示不补检索</span></el-form-item>
+              <el-form-item label="核验后允许一次修订"><el-switch v-model="agent.allow_revision" /></el-form-item>
+            </template>
             <el-form-item label="评价范围"><el-radio-group v-model="scope"><el-radio data-testid="evaluation-scope-single" value="single">单题验证</el-radio><el-radio value="four">完整四维</el-radio></el-radio-group></el-form-item>
             <template v-if="scope==='single'">
               <el-form-item label="维度"><el-select data-testid="evaluation-dimension" v-model="dimension" class="full"><el-option v-for="dim in dimensions" :key="dim.code" :value="dim.code" :label="dim.code+' '+dim.name" /></el-select></el-form-item>
@@ -37,7 +44,7 @@
                 </template>
               </el-collapse-item>
               <el-collapse-item title="模型调用与运行预算" name="budget">
-                <el-form-item label="最多模型调用次数"><el-input-number v-model="budget.max_model_calls" :min="1" :max="32" /><span class="field-note">本次至少 {{ plannedCalls }} 次</span></el-form-item>
+                <el-form-item label="最多模型调用次数"><el-input-number v-model="budget.max_model_calls" :min="plannedCalls" :max="40" /><span data-testid="evaluation-planned-calls" class="field-note">本计划需预留 {{ plannedCalls }} 次，实际按轨迹计数</span></el-form-item>
                 <el-form-item label="最大已观测 tokens"><el-input-number v-model="budget.max_observed_tokens" :min="1000" :max="1000000" :step="10000" /></el-form-item>
                 <el-form-item label="单次输出 tokens 上限"><el-input-number v-model="budget.max_output_tokens" :min="128" :max="16000" :step="100" /></el-form-item>
                 <el-form-item label="单次请求超时（秒）"><el-input-number v-model="budget.request_timeout_seconds" :min="1" :max="600" /></el-form-item>
@@ -56,6 +63,7 @@
             <el-table-column label="公司／年度" min-width="130"><template #default="{row}">{{ row.stock_code }} · {{ row.report_year }}</template></el-table-column>
             <el-table-column label="运行" min-width="110"><template #default="{row}"><router-link :to="'/evaluations/'+row.id">{{ short(row.id) }}</router-link></template></el-table-column>
             <el-table-column label="状态" min-width="110"><template #default="{row}"><el-tag :type="statusType(row.status)">{{ statusName(row.status) }}</el-tag></template></el-table-column>
+            <el-table-column label="方法" min-width="110"><template #default="{row}">{{ modeName(row.mode || row.request?.mode) }}</template></el-table-column>
             <el-table-column label="创建时间（北京时间）" min-width="175"><template #default="{row}">{{ formatDate(row.created_at) }}</template></el-table-column>
           </el-table>
           <el-pagination class="section" v-model:current-page="page" :total="total" :page-size="10" layout="total, prev, pager, next" @current-change="load" />
@@ -66,23 +74,26 @@
   </div>
 </template>
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import request from '../api/request'
-import { formatDate, short, statusName, statusType } from '../utils/presentation'
+import { formatDate, modeName, short, statusName, statusType } from '../utils/presentation'
 import { newRequestKey } from '../utils/idempotency'
 const route=useRoute(),router=useRouter()
 const form=reactive({index_id:'',stock_code:'',report_year:2024,question_set_version:'four-dim-v1'})
 const retrieval=reactive({annual_top_k:5,regulation_top_k:5,max_reference_tokens:6000,tokenizer_kind:'qwen3',temporal_filter:false,unknown_temporal:'retain'})
 const budget=reactive({max_model_calls:8,max_observed_tokens:80000,max_runtime_seconds:1800,max_output_tokens:8000,request_timeout_seconds:600})
+const mode=ref('dual_fixed'),agent=reactive({max_rounds:1,max_supplemental_calls:4,allow_revision:true})
 const scope=ref('single'),dimension=ref('D1'),question=ref(''),targetDate=ref(null),dateRole=ref('event_date'),model=ref('')
 const companies=ref([]),indexes=ref([]),questionSets=ref([]),profiles=ref([]),runs=ref([]),page=ref(1),total=ref(0),loading=ref(false),submitting=ref(false)
 const selectedSet=computed(()=>questionSets.value.find(row=>row.version===form.question_set_version))
 const dimensions=computed(()=>selectedSet.value?.dimensions || [])
 const providerAvailable=computed(()=>profiles.value.some(row=>row.available && row.model===model.value))
-const plannedCalls=computed(()=>scope.value==='single' ? 1 : selectedSet.value?.questions?.length || 4)
-const canSubmit=computed(()=>Boolean(form.index_id && form.stock_code && providerAvailable.value && budget.max_model_calls>=plannedCalls.value && (scope.value==='single' ? question.value.trim() && dimension.value : selectedSet.value) && (!retrieval.temporal_filter || targetDate.value)))
+const plannedCalls=computed(()=>(scope.value==='single' ? 1 : selectedSet.value?.questions?.length || 4)*(mode.value==='dual_agent' ? (Number.isInteger(agent.max_rounds) ? agent.max_rounds : 1)+2+Number(agent.allow_revision) : 1))
+watch(plannedCalls,value=>{if(budget.max_model_calls<value)budget.max_model_calls=value})
+const integer=(value,min,max)=>Number.isInteger(value) && value>=min && value<=max
+const canSubmit=computed(()=>Boolean(form.index_id && form.stock_code && integer(form.report_year,1990,2100) && providerAvailable.value && integer(budget.max_model_calls,plannedCalls.value,40) && integer(budget.max_observed_tokens,1,1000000) && integer(budget.max_output_tokens,128,16000) && integer(budget.request_timeout_seconds,1,600) && integer(budget.max_runtime_seconds,1,7200) && integer(retrieval.max_reference_tokens,1,32000) && integer(retrieval.annual_top_k,1,20) && integer(retrieval.regulation_top_k,1,20) && (mode.value!=='dual_agent' || integer(agent.max_rounds,1,3) && integer(agent.max_supplemental_calls,0,12)) && (scope.value==='single' ? question.value.trim() && dimension.value : selectedSet.value) && (!retrieval.temporal_filter || targetDate.value)))
 let pendingSubmission=null,loadSequence=0
 async function load(){
   loading.value=true;const sequence=++loadSequence
@@ -94,7 +105,7 @@ async function submit(){
   let questions=null
   if(scope.value==='single')questions=[{key:'custom-1',dimension:dimension.value,text:question.value.trim(),declared_target_date:retrieval.temporal_filter ? targetDate.value : null,target_date_role:retrieval.temporal_filter ? dateRole.value : null}]
   else if(retrieval.temporal_filter)questions=selectedSet.value.questions.map(item=>({...item,declared_target_date:targetDate.value,target_date_role:dateRole.value}))
-  const payload={...form,questions,retrieval:{...retrieval},budget:{...budget},model:model.value || null}
+  const payload={...form,mode:mode.value,questions,retrieval:{...retrieval},budget:{...budget},model:model.value || null,...(mode.value==='dual_agent' ? {agent:{...agent}} : {})}
   const signature=JSON.stringify(payload)
   if(!pendingSubmission || pendingSubmission.signature!==signature)pendingSubmission={signature,key:newRequestKey()}
   submitting.value=true

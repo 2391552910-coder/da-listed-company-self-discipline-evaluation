@@ -9,6 +9,7 @@
         <el-menu-item index="/contexts">上下文与检索</el-menu-item>
         <el-menu-item index="/evaluations">评价工作台</el-menu-item>
         <el-menu-item index="/tasks">任务中心</el-menu-item>
+        <el-menu-item index="/experiments">实验与对照</el-menu-item>
         <el-menu-item index="/reports-export">报告导出</el-menu-item>
         <el-menu-item index="/index" disabled>第三章指数 · 待接入</el-menu-item>
       </el-menu>

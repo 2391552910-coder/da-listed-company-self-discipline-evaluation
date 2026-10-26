@@ -1,0 +1,12 @@
+# CI ONLY: explicitly synthetic HTTP provider, never a production fallback.
+# Provider runs inside Worker and is reachable on that container's loopback.
+services:
+  backend:
+    environment: &fixture
+      LLM_BASE_URL: http://127.0.0.1:23991/v1
+      LLM_API_KEY: synthetic-deployment-fixture-key
+      LLM_MODEL: deployment-fixture-not-a-research-model
+      LLM_TEMPERATURE: ""
+      LLM_JSON_MODE: "true"
+  worker:
+    environment: *fixture

@@ -2,7 +2,7 @@
   <div class="page-shell" v-loading="loading">
     <div class="page-heading"><div><h2>评价详情 <span class="muted">{{ short(runId) }}</span></h2><p class="muted">{{ run?.request?.stock_code || run?.stock_code }} · {{ run?.request?.report_year || run?.report_year }} 年度</p></div><div class="actions"><el-button @click="refresh(true)">刷新</el-button><el-button @click="$router.push('/evaluations')">运行列表</el-button><el-button v-if="snapshot?.answers?.length" type="primary" @click="$router.push({path:'/reports-export',query:{run_id:runId}})">报告导出</el-button></div></div>
     <template v-if="run">
-      <div class="run-banner"><el-tag :type="statusType(run.status)">{{ statusName(run.status) }}</el-tag><span v-if="job?.cancel_requested">取消请求已登记</span><span class="muted">运行版本 {{ run.id }} · 创建于 {{ formatDate(run.created_at) }}（北京时间）</span></div>
+      <div class="run-banner"><el-tag :type="statusType(run.status)">{{ statusName(run.status) }}</el-tag><el-tag>{{ modeName(run.request?.mode) }}</el-tag><span v-if="job?.cancel_requested">取消请求已登记</span><span class="muted">运行版本 {{ run.id }} · 创建于 {{ formatDate(run.created_at) }}（北京时间）</span></div>
       <el-alert v-if="pollError" title="自动刷新已暂停。检查连接后点击刷新恢复，持久化任务仍保留。" type="warning" :closable="false" class="section" />
       <el-alert v-if="['queued','running'].includes(run.status)" title="任务尚在处理中。已发出的模型调用可能无法撤销；取消后不发布未完成结果。" type="info" :closable="false" class="section" />
       <el-alert v-if="run.error_code || job?.error_code" :title="'运行信息：'+(run.error_code || job.error_code)" type="warning" :closable="false" class="section" />
@@ -24,6 +24,7 @@
           <p data-testid="detail-answer-text" class="answer-text">{{ answer.answer_text || '此题未产生可发布正文。' }}</p>
           <ul v-if="answer.limitations?.length" class="limit-list"><li v-for="(item,index) in answer.limitations" :key="index">{{ item }}</li></ul>
           <el-collapse>
+            <el-collapse-item v-if="answer.agent_trace" title="Agent 规划、补检索、核验与修订轨迹" :name="answer.id+'-agent'"><AgentTrace :trace="answer.agent_trace" @evidence="showEvidence" /></el-collapse-item>
             <el-collapse-item :title="'论断与引用 · '+(answer.claims?.length || 0)+' 条论断'" :name="answer.id+'-claims'">
               <div v-for="claim in answer.claims || []" :key="claim.id" data-testid="detail-claim" class="claim">
                 <p><strong>{{ claim.id }}</strong> {{ claim.text }}</p>
@@ -50,6 +51,7 @@
         </el-card>
       </template>
       <el-empty v-else :description="['queued','running'].includes(run.status) ? '运行尚未提交完整结果快照' : '当前运行没有可发布结果，请查看任务错误与调用记录'" />
+      <el-card v-for="answer in (!snapshot ? run.answers || [] : []).filter(item=>item.agent_trace)" :key="'live-'+answer.id" class="section"><template #header>{{ answer.question_key }} · 已持久化 Agent 轨迹</template><AgentTrace :trace="answer.agent_trace" @evidence="showEvidence" /></el-card>
       <el-card class="section"><template #header>版本、配置与调用账本</template><p class="muted hash">结果快照 SHA256：{{ run.snapshot_sha256 || '尚未产生' }}</p><p v-if="run.parent_run_id" class="muted">重试来源 <router-link :to="'/evaluations/'+run.parent_run_id">{{ run.parent_run_id }}</router-link></p><el-collapse><el-collapse-item title="冻结请求" name="request"><pre class="json-panel">{{ pretty(run.request) }}</pre></el-collapse-item><el-collapse-item title="模型调用与任务账本（含未知用量或中断）" name="calls"><pre class="json-panel">{{ pretty({model_calls:run.model_calls || snapshot?.model_calls,job}) }}</pre></el-collapse-item></el-collapse></el-card>
     </template>
     <EvidenceViewer v-model="evidenceOpen" :record="evidence" :quote="evidenceQuote" />
@@ -61,7 +63,8 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import request from '../api/request'
 import EvidenceViewer from '../components/EvidenceViewer.vue'
-import { evidenceName, formatDate, pretty, short, sourceRole, statusName, statusType, supportName } from '../utils/presentation'
+import AgentTrace from '../components/AgentTrace.vue'
+import { evidenceName, formatDate, modeName, pretty, short, sourceRole, statusName, statusType, supportName } from '../utils/presentation'
 import { newRequestKey } from '../utils/idempotency'
 const route=useRoute(),router=useRouter(),run=ref(null),job=ref(null),loading=ref(false),acting=ref(false),pollError=ref(false)
 const evidence=ref(null),evidenceQuote=ref(''),evidenceOpen=ref(false)

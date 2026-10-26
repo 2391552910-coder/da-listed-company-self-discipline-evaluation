@@ -83,7 +83,8 @@ class Evaluations:
         return {"items": question_sets()}
 
     def enqueue(self, index_id, stock_code, report_year, question_set_version="four-dim-v1",
-                questions=None, retrieval=None, budget=None, model=None, key=None):
+                questions=None, retrieval=None, budget=None, model=None, key=None,
+                mode="dual_fixed", agent=None):
         stock_code = code(stock_code)
         _int(report_year, 1990, 2100, "report_year")
         if not isinstance(index_id, str) or not index_id.strip():
@@ -93,13 +94,27 @@ class Evaluations:
         if key is not None and (not isinstance(key, str) or not key.strip() or len(key) > 200):
             raise DomainError("INVALID_IDEMPOTENCY_KEY", "幂等键为空或过长", 422)
         template = normalize_questions(question_set_version, questions)
+        if not isinstance(mode, str) or mode not in {"dual_fixed", "dual_agent"}:
+            raise DomainError("INVALID_EVALUATION_MODE", "评价模式须为固定双源或受限Agent", 422)
+        agent_config = None
+        if mode == "dual_agent":
+            from app.evaluation.agent import normalize_agent_config
+            agent_config = normalize_agent_config(agent)
+        elif agent is not None:
+            raise DomainError("INVALID_AGENT_CONFIG", "固定双源模式不接受Agent配置", 422)
         if retrieval is not None and not isinstance(retrieval, dict):
             raise DomainError("INVALID_EVALUATION_CONFIG", "retrieval须为对象", 422)
         if budget is not None and not isinstance(budget, dict):
             raise DomainError("INVALID_EVALUATION_CONFIG", "budget须为对象", 422)
         if set(retrieval or {}) - set(RETRIEVAL_DEFAULTS) or set(budget or {}) - set(BUDGET_DEFAULTS):
             raise DomainError("INVALID_EVALUATION_CONFIG", "未知检索或预算配置", 422)
-        retrieval, budget = RETRIEVAL_DEFAULTS | (retrieval or {}), BUDGET_DEFAULTS | (budget or {})
+        supplied_budget = budget or {}
+        retrieval, budget = RETRIEVAL_DEFAULTS | (retrieval or {}), BUDGET_DEFAULTS | supplied_budget
+        planned_calls = len(template["questions"])
+        if agent_config is not None:
+            planned_calls *= agent_config["max_rounds"] + 2 + int(agent_config["allow_revision"])
+            if "max_model_calls" not in supplied_budget:
+                budget["max_model_calls"] = planned_calls
         for name in ("annual_top_k", "regulation_top_k"):
             _int(retrieval[name], 1, 20, name)
         _int(retrieval["max_reference_tokens"], 1, 32000, "max_reference_tokens")
@@ -113,12 +128,14 @@ class Evaluations:
             ("max_runtime_seconds", 1, 7200), ("max_output_tokens", 128, 16000),
             ("request_timeout_seconds", 1, 600)):
             _int(budget[name], low, high, name)
-        if budget["max_model_calls"] < len(template["questions"]):
+        if budget["max_model_calls"] < planned_calls:
             raise DomainError("BUDGET_TOO_SMALL", "调用预算不足以覆盖计划题目", 422)
         public = {"index_id": index_id, "stock_code": stock_code, "report_year": report_year,
             "question_set_version": question_set_version, "question_set": template, "questions": template["questions"],
-            "retrieval": retrieval, "budget": budget, "requested_model": model, "mode": "dual_fixed",
+            "retrieval": retrieval, "budget": budget, "requested_model": model, "mode": mode,
             "prompt_version": PROMPT_VERSION}
+        if agent_config is not None:
+            public["agent_config"] = agent_config
         if key:
             with self.docs.db.session() as db:
                 if db.one("SELECT id FROM t_job WHERE idempotency_key=?", (key,)):
@@ -135,6 +152,9 @@ class Evaluations:
                             "tokenizer_identity": tokenizer_identity,
             "prompt_template": {"version": PROMPT_VERSION, "system": SYSTEM_PROMPT,
                                 "user_format": "stock-report-question-diagnostics-context-json-v1"}}
+        if agent_config is not None:
+            from app.evaluation.agent_protocol import protocol_snapshot
+            request["agent_protocol"] = protocol_snapshot()
         try:
             with self.docs.db.session() as db:
                 if key and db.one("SELECT id FROM t_job WHERE idempotency_key=?", (key,)):
@@ -196,6 +216,9 @@ class Evaluations:
                     raise ValueError("context hash mismatch")
             if result.get("prompt") and sha(dump(result["prompt"]["messages"]).encode()) != result["prompt"]["messages_sha256"]:
                 raise ValueError("prompt hash mismatch")
+            if result.get("agent_trace"):
+                from app.evaluation.agent import validate_trace
+                validate_trace(result["agent_trace"])
             return result
         except DomainError:
             raise
@@ -220,14 +243,14 @@ class Evaluations:
     @staticmethod
     def _call_public(row):
         return {k: row.get(k) for k in ("id", "answer_id", "job_id", "attempt_number", "call_number", "status",
-            "request_sha256", "response_sha256", "error_code", "provider_request_id", "started_at", "finished_at")
+            "request_sha256", "response_sha256", "error_code", "provider_request_id", "started_at", "finished_at", "purpose", "step_key")
         } | {"usage": json.loads(row["usage_json"]) if row.get("usage_json") else _usage(None)}
 
     def _calls(self, run_id):
         with self.docs.db.session() as db:
             return db.rows("SELECT * FROM t_model_call WHERE run_id=? ORDER BY call_number", (run_id,))
 
-    def _reserve_call(self, run, answer, prompt, attempt, job_id, worker_id):
+    def _reserve_call(self, run, answer, prompt, attempt, job_id, worker_id, purpose="answer", step_key=None):
         request = json.loads(run["request_json"])
         with self.docs.db.session() as db:
             fence_job(db, job_id, worker_id)
@@ -244,10 +267,17 @@ class Evaluations:
             wire = {"messages": prompt["messages"], "model_identity": request["model"],
                 "max_output_tokens": request["budget"]["max_output_tokens"], "temperature": request["model"].get("temperature")}
             call_id = uid()
-            db.execute("""INSERT INTO t_model_call
-                (id,run_id,answer_id,job_id,attempt_number,call_number,status,request_sha256,started_at)
-                VALUES(?,?,?,?,?,?,?,?,?)""", (call_id, run["id"], answer["id"], job_id, attempt,
-                len(calls) + 1, "in_flight", sha(dump(wire).encode()), now()))
+            if step_key is None:
+                # Preserve the fixed-flow ledger contract and historical calls.
+                db.execute("""INSERT INTO t_model_call
+                    (id,run_id,answer_id,job_id,attempt_number,call_number,status,request_sha256,started_at)
+                    VALUES(?,?,?,?,?,?,?,?,?)""", (call_id, run["id"], answer["id"], job_id, attempt,
+                    len(calls) + 1, "in_flight", sha(dump(wire).encode()), now()))
+            else:
+                db.execute("""INSERT INTO t_model_call
+                    (id,run_id,answer_id,job_id,attempt_number,call_number,status,request_sha256,started_at,purpose,step_key)
+                    VALUES(?,?,?,?,?,?,?,?,?,?,?)""", (call_id, run["id"], answer["id"], job_id, attempt,
+                    len(calls) + 1, "in_flight", sha(dump(wire).encode()), now(), purpose, step_key))
             return db.one("SELECT * FROM t_model_call WHERE id=?", (call_id,))
 
     def _complete_call(self, call, response, job_id, worker_id, error_code=None):
@@ -394,6 +424,12 @@ class Evaluations:
                 if not answer["context"]["source_records"]:
                     answer.update(status="budget_exhausted", error_code="BUDGET_EXHAUSTED",
                         limitations=["完整证据片段均未进入参考预算，未发送模型请求。"])
+                    self._save_answer(answer, run["request_sha256"], job_id, worker_id)
+                    continue
+                if request.get("mode", "dual_fixed") == "dual_agent":
+                    from app.evaluation.agent import AgentRunner
+                    answer = AgentRunner(self, run, answer, question, request, attempt,
+                        job_id, worker_id, counter, identity, checkpoint, deadline).execute()
                     self._save_answer(answer, run["request_sha256"], job_id, worker_id)
                     continue
                 calls = [c for c in self._calls(run_id) if c["answer_id"] == row["id"]]
@@ -577,7 +613,9 @@ class Evaluations:
         condition = " WHERE " + " AND ".join(where) if where else ""
         with self.docs.db.session() as db:
             count = db.one("SELECT COUNT(*) AS n FROM t_evaluation_run" + condition, tuple(params))["n"]
-            rows = db.rows("""SELECT id,job_id,index_id,stock_code,report_year,status,parent_run_id,created_at
+            rows = db.rows("""SELECT id,job_id,index_id,stock_code,report_year,status,parent_run_id,created_at,request_json
                 FROM t_evaluation_run""" + condition + " ORDER BY created_at DESC,id DESC LIMIT ? OFFSET ?",
                 (*params, size, (page - 1) * size))
+        for row in rows:
+            row["mode"] = json.loads(row.pop("request_json")).get("mode", "dual_fixed")
         return {"items": rows, "total": count, "page": page, "page_size": size}

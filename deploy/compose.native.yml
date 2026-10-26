@@ -1,0 +1,20 @@
+# Infrastructure only for native Windows/Linux CUDA API + Worker.
+# docker compose --env-file <private.env> -f deploy/compose.native.yml up -d
+name: ${COMPOSE_PROJECT_NAME:-dalun-native}
+services:
+  postgres:
+    image: postgres:16-bookworm
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      POSTGRES_DB: self_discipline
+    ports: ["127.0.0.1:${DALUN_DATABASE_PORT:-5432}:5432"]
+    volumes: ["database:/var/lib/postgresql/data"]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d self_discipline"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+volumes:
+  database:
