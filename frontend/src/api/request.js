@@ -16,7 +16,9 @@ request.interceptors.response.use(
     return body
   },
   (err) => {
-    const msg = err.response?.data?.message || err.message || '网络错误'
+    const detail=err.response?.data?.detail
+    const validationMessage=Array.isArray(detail) ? detail.map(item=>item.loc?.slice(1).join('.')+': '+item.msg).join('；') : typeof detail==='string' ? detail : ''
+    const msg = err.response?.data?.message || validationMessage || err.message || '网络错误'
     ElMessage.error(msg)
     return Promise.reject(err)
   }

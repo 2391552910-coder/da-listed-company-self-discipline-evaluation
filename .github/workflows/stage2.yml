@@ -1,4 +1,4 @@
-name: Document and context services
+name: Thesis system verification
 on:
   push:
     branches: [main, "feat/**"]
@@ -38,7 +38,7 @@ jobs:
         working-directory: backend
       - run: python -m alembic -c alembic.ini upgrade head
         working-directory: backend
-      - run: python -m pytest tests -q --junitxml=../test-results/stage3.xml
+      - run: python -m pytest tests -q --junitxml=../test-results/stage45.xml
         working-directory: backend
       - uses: actions/setup-node@v4
         with:
@@ -47,8 +47,14 @@ jobs:
         working-directory: frontend
       - run: npm run build
         working-directory: frontend
+      - run: npm install --no-save @playwright/test@1.56.1
+        working-directory: frontend
+      - run: npx playwright install --with-deps chromium
+        working-directory: frontend
+      - run: npx playwright test
+        working-directory: frontend
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: stage3-test-results
+          name: stage45-test-results
           path: test-results/

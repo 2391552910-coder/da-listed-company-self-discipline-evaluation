@@ -1,0 +1,61 @@
+{
+  "schema_version": "stage45-real-validation-v1",
+  "executed_at_utc": "2026-10-26T08:57:58.474106+00:00",
+  "status": "blocked",
+  "database_profile": "sqlite_diagnostic",
+  "retrieval_profile": "qwen_cuda",
+  "index_manifest_sha256": "7665cb28b37aa6c1dd67a085d1c841d55ea62d551f9e7142238ee27fcc547715",
+  "runs": [
+    {
+      "mode": "single",
+      "run_id": "9fc1615f-21be-40af-8cf4-ca0d875019a4",
+      "status": "failed",
+      "snapshot_sha256": "b8f7af636b8731b012c27bc0c002c8c541debebe9a2dc806e0602ef20c6afbcc",
+      "checks": [
+        {
+          "question_key": "D2-SINGLE",
+          "status": "failed",
+          "error_code": "MODEL_TRANSPORT_FAILED",
+          "locator_verified_count": 10,
+          "reference_token_count": 4898,
+          "validation_status": null,
+          "evidence_status": "insufficient"
+        }
+      ],
+      "model_calls": [
+        {
+          "id": "bf63d887-6895-4345-be29-28ff03c5fd37",
+          "answer_id": "7037892c-c10c-429a-9d36-99f76dccd22d",
+          "job_id": "c3f2ad53-0193-4573-9ba8-31d6ccb32f68",
+          "attempt_number": 1,
+          "call_number": 1,
+          "status": "uncertain",
+          "request_sha256": "fee934f27c5b4f425c8c6d34fcf9566a43c3988f879c284913ead0ea50d9f21c",
+          "response_sha256": null,
+          "error_code": "MODEL_TRANSPORT_FAILED",
+          "provider_request_id": null,
+          "started_at": "2026-10-26T08:59:24.308978+00:00",
+          "finished_at": "2026-10-26T08:59:24.792494+00:00",
+          "usage": {
+            "completion_tokens": null,
+            "prompt_tokens": null,
+            "status": "unknown",
+            "total_tokens": null
+          }
+        }
+      ],
+      "exports": []
+    }
+  ],
+  "real_model_answers_received": 0,
+  "semantic_support_verified": false,
+  "third_chapter_index": null,
+  "blocking_errors": [
+    "MODEL_TRANSPORT_FAILED"
+  ],
+  "unverified": [
+    "successful real-model single question",
+    "successful real-model four dimensions",
+    "exports of real-model evaluations"
+  ]
+}

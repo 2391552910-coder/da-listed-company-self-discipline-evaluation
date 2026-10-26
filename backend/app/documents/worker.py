@@ -21,12 +21,17 @@ def work_once(documents):
         elif job["kind"]=="context":
             from app.retrieval.service import Contexts
             result=Contexts(documents).build(payload,job["id"],worker_id,heartbeat)
+        elif job["kind"]=="evaluation":
+            from app.evaluation.service import Evaluations
+            result=Evaluations(documents).build(payload,job["id"],worker_id,heartbeat)
         else:
             raise DomainError("UNKNOWN_JOB_KIND","未知任务类型")
         heartbeat()
+        outcome=result.get("status")
         jobs.finish(job["id"],worker_id,result=result,
-                    status=result.get("status") if result.get("status") in {"budget_exhausted","partial"} else None,
-                    error=result.get("error_code"))
+                    status=outcome if outcome in {"failed","budget_exhausted","partial"} else None,
+                    error=("BUDGET_EXHAUSTED" if outcome=="budget_exhausted" else
+                           result.get("error_code") if outcome!="partial" else None))
     except Exception as error:
         if isinstance(error,DomainError) and error.code=="LEASE_LOST":
             return documents.job(job["id"])

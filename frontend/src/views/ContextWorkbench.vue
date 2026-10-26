@@ -30,7 +30,7 @@
               </el-select>
             </el-form-item>
             <el-form-item :label="form.tokenizer_kind === 'qwen3' ? '参考 tokens 上限' : 'UTF-8 字节上限（不是 tokens）'">
-              <el-input-number v-model="form.max_reference_tokens" :min="1" :max="100000" :step="500" class="full" />
+              <el-input-number v-model="form.max_reference_tokens" :min="1" :max="32000" :step="500" class="full" />
             </el-form-item>
             <p class="muted">完整片段若超出预算会被跳过，之后的较短片段仍可入选。实际用量以冻结快照为准。</p>
             <el-form-item label="最长运行时间（秒）"><el-input-number v-model="form.max_runtime_seconds" :min="1" :max="3600" :step="60" /></el-form-item>
@@ -60,7 +60,8 @@
             <el-table-column label="操作" min-width="170"><template #default="{row}">
               <el-button v-if="['queued','running'].includes(row.status)" link type="warning" :loading="activeAction === row.id" @click="cancelJob(row)">取消</el-button>
               <el-button v-if="['failed','cancelled','budget_exhausted'].includes(row.status)" link type="primary" :loading="activeAction === row.id" @click="retryJob(row)">新建重试</el-button>
-              <el-button v-if="row.run_id" link @click="loadRun(row.run_id)">查看运行</el-button>
+              <el-button v-if="row.run_id && row.kind==='context'" link @click="loadRun(row.run_id)">查看上下文</el-button>
+              <router-link v-if="row.run_id && row.kind==='evaluation'" :to="'/evaluations/'+row.run_id">查看评价</router-link>
             </template></el-table-column>
           </el-table>
           <el-pagination class="section" v-model:current-page="jobPage" :total="jobTotal" :page-size="10" layout="total, prev, pager, next" @current-change="refreshManually" />
@@ -150,7 +151,7 @@ const pretty=value=>JSON.stringify(value ?? null,null,2)
 const statuses={queued:'排队中',running:'运行中',succeeded:'已完成',partial:'部分完成',failed:'失败',cancelled:'已取消',budget_exhausted:'预算耗尽'}
 const statusName=value=>statuses[value] || value || '未知'
 const statusType=value=>value==='succeeded' ? 'success' : ['failed','budget_exhausted'].includes(value) ? 'danger' : value==='cancelled' ? 'warning' : 'info'
-const kindName=value=>({parse:'文档解析',index:'索引构建',context:'上下文组装'}[value] || value)
+const kindName=value=>({parse:'文档解析',index:'索引构建',context:'上下文组装',evaluation:'模型评价'}[value] || value)
 const originalFileUrl=row=>'/api/v1/document-versions/'+encodeURIComponent(row.version_id)+'/file'+(row.physical_page ? '#page='+row.physical_page : '')
 let alive=false, timer=null, runRequestSequence=0
 
@@ -204,7 +205,7 @@ async function submit() {
     ElMessage.success('上下文任务已创建，关闭页面不会删除任务')
     runPage.value=1;jobPage.value=1
     await loadLists()
-    if(response.data.run_id)await loadRun(response.data.run_id)
+    if(response.data.run_id && response.data.kind==='context')await loadRun(response.data.run_id)
   } finally { submitting.value=false }
 }
 async function cancelJob(job) {
@@ -222,7 +223,7 @@ async function retryJob(job) {
     ElMessage.success('已新建重试任务，原记录保留')
     jobPage.value=1;runPage.value=1
     await loadLists()
-    if(response.data.run_id)await loadRun(response.data.run_id)
+    if(response.data.run_id && response.data.kind==='context')await loadRun(response.data.run_id)
   } finally { activeAction.value=null }
 }
 function showEvidence(record) { selectedEvidence.value=record;evidenceOpen.value=true }

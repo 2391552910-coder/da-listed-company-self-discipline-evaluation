@@ -58,7 +58,9 @@ class Database:
             session.execute("INSERT INTO t_document_schema(revision) VALUES(2) ON CONFLICT(revision) DO NOTHING")
             from app.documents.schema_v3 import upgrade_stage3
             upgrade_stage3(session)
+            from app.documents.schema_v4 import upgrade_stage4
+            upgrade_stage4(session)
 
     def ready(self):
         with self.session() as session:
-            return session.one("SELECT revision FROM t_document_schema WHERE revision=3") is not None
+            return session.one("SELECT revision FROM t_document_schema WHERE revision=4") is not None
