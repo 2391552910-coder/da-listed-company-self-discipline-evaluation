@@ -33,3 +33,33 @@
 ## 验证
 
 执行结果和来源提交见本目录 `test-summary.json`。浏览器流程使用显式合成资料和HTTP测试模型响应，不代表真实模型质量。
+
+
+### 自动化验收范围
+
+本轮保留阶段6/7完整CI，并新增公司搜索/作用域隔离和总览快照校验测试。浏览器新增3条流程：
+
+1. 真实API录入52家显式合成公司，验证服务端分页、第50条以外的远程查找、带交易所后缀的公司回填，以及总览公司/年度隔离和刷新恢复。
+2. 通过真实上传与Worker解析长TXT合成法规，验证共享法规范围、固定解析批次第二页和字符区间原文定位。
+3. 用HTTP合成测试模型完成固定/Agent运行，验证组合过滤、从第二页切换模式回第一页，并保留尚未提交的新建表单。
+
+所有模型响应仍为合成验收资料。没有发生真实外部模型调用，不能据此作出Agent质量提升或论文实证结论。
+
+
+### 本轮最终结果
+
+验证源提交：`a3eceb3a98762914a279aea1b76a51f8085d4995`；功能合并提交：`8da601756a54904a586c3649b7235404bc09d3e4`；[PR #5](https://github.com/2391552910-coder/da-listed-company-self-discipline-evaluation/pull/5)。[CI run 40357471554](https://github.com/2391552910-coder/da-listed-company-self-discipline-evaluation/actions/runs/40357471554)的三个job均成功。
+
+| 检查 | 结果 | 边界 |
+| --- | --- | --- |
+| 本地Windows研究Python | 496通过、10跳过，254.00秒 | 缺少可选Web/PG依赖与符号链接权限，相关路径由CI覆盖；不与其他重复测试次数相加 |
+| Linux后端 | 507通过、0跳过，114.78秒 | SQLite、HTTP与真实PostgreSQL16，保留旧数据的迁移检查 |
+| Windows后端 | 503通过、4跳过，572.21秒 | 4项PostgreSQL检查由Linux执行；PowerShell入口语法检查通过 |
+| Vue生产构建 | 通过，4.57秒 | 工程构建，不作为使用体验或研究效果证明 |
+| Chromium浏览器 | 7通过，55.2秒 | 保留原4条完整评价/Agent/实验/导出流程，新增3条查询与定位验收 |
+| 正式Compose拓扑 | 通过 | Nginx、API、独立Worker和PG；合成PDF/TXT导入、解析、评价和报告；重启应用后2原件与2冻结导出可按原哈希重读，重读0模型调用 |
+| PG冷备恢复 | 通过 | schema revision 5；2原件、索引及数据库恢复到新空目标；6个文件，未覆盖既有数据库；恢复清单哈希与备份一致 |
+
+详细结果与证据摘要见[test-summary.json](test-summary.json)。[Linux/浏览器/PG制品](https://github.com/2391552910-coder/da-listed-company-self-discipline-evaluation/actions/runs/40357471554/artifacts/12665514332)、[Windows制品](https://github.com/2391552910-coder/da-listed-company-self-discipline-evaluation/actions/runs/40357471554/artifacts/12666304235)、[Compose制品](https://github.com/2391552910-coder/da-listed-company-self-discipline-evaluation/actions/runs/40357471554/artifacts/12666726365)。GitHub制品有保留期限，仓库内摘要长期记录代码身份、测试范围和恢复哈希。
+
+功能遗漏已补齐，当前仍不宣称研究实证和目标环境最终验收全部完成。前端视觉及苹果发布会风格动效继续列为后续设计工作；本轮未安装设计skill。

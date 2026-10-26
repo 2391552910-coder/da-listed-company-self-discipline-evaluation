@@ -1,0 +1,134 @@
+{
+  "schema_version": "system-completion-validation-v1",
+  "status": "engineering_validation_passed",
+  "base_commit": "8e943701cfb1aeba2b944c7babfbcf7ba57a474b",
+  "validated_source_commit": "a3eceb3a98762914a279aea1b76a51f8085d4995",
+  "candidate_source_commit": "a3eceb3a98762914a279aea1b76a51f8085d4995",
+  "pull_request": "https://github.com/2391552910-coder/da-listed-company-self-discipline-evaluation/pull/5",
+  "ci_run": {
+    "id": 40357471554,
+    "url": "https://github.com/2391552910-coder/da-listed-company-self-discipline-evaluation/actions/runs/40357471554",
+    "conclusion": "success"
+  },
+  "changes": [
+    "company_and_year_scoped_dashboard",
+    "verified_frozen_context_coverage",
+    "literal_company_search_and_server_pagination",
+    "remote_company_selection_and_suffix_hydration",
+    "document_source_company_year_filters",
+    "fixed_parse_chunk_pagination",
+    "evaluation_mode_company_year_status_filters"
+  ],
+  "local_backend": {
+    "profile": "Windows research Python; optional Web/PG dependencies unavailable",
+    "passed": 496,
+    "skipped": 10,
+    "failed": 0,
+    "elapsed_seconds": 254.0,
+    "note": "Skip reasons: optional HTTP/PG dependencies and unavailable Windows symlink permission. CI covers these paths; counts are not added across overlapping runs."
+  },
+  "local_frontend_script_syntax": {
+    "scripts_checked": 18,
+    "failed": 0,
+    "scope": "script setup blocks; not a substitute for Vue build or browser tests"
+  },
+  "ci_linux_backend": {
+    "passed": 507,
+    "skipped": 0,
+    "failed": 0,
+    "elapsed_seconds": 114.78,
+    "job_id": 121693671245,
+    "database": "PostgreSQL 16 plus SQLite offline tests"
+  },
+  "ci_windows_backend": {
+    "passed": 503,
+    "skipped": 4,
+    "failed": 0,
+    "elapsed_seconds": 572.21,
+    "job_id": 121693671260,
+    "skip_reason": "Four PostgreSQL cases covered by the Linux job"
+  },
+  "ci_frontend_build": {
+    "status": "passed",
+    "elapsed_seconds": 4.57,
+    "profile": "Vue production build"
+  },
+  "ci_browser": {
+    "passed": 7,
+    "failed": 0,
+    "elapsed_seconds": 55.2,
+    "profile": "Chromium real application/API/worker; synthetic source/model fixtures"
+  },
+  "ci_postgresql_backup_restore": {
+    "schema_version": "postgresql-backup-acceptance-v1",
+    "status": "passed",
+    "data_kind": "synthetic_fixture",
+    "database_profile": "PostgreSQL 16",
+    "business_schema_revision": 5,
+    "database_and_assets_round_trip": true,
+    "source_file_sha256": "26d073620d9e7d8fd0e819d6e20501d993365a19dcea409608e2143b42aa6f36",
+    "index_manifest_sha256": "012c469ebfeefd081ea35a2dea07beaa3654c1b9d3b7c4e1acd8e480fd6498f5",
+    "annual_file_sha256": "06e66fc49327c55af9f48518a4c8d9ad7ca24370a6fe8f7420d0070a9502a9bb",
+    "source_files_verified": 2,
+    "backup_manifest_sha256": "72202e7b85084c448bb14adeb5fc88bdaf5c1fb5daa947ab8b60cfd104a2a132",
+    "restored_manifest_sha256": "72202e7b85084c448bb14adeb5fc88bdaf5c1fb5daa947ab8b60cfd104a2a132",
+    "file_count": 6,
+    "existing_databases_overwritten": 0,
+    "real_model_calls": 0
+  },
+  "ci_deployment": {
+    "conclusion": "success",
+    "job_id": 121693671798,
+    "source_files_verified": 2,
+    "frozen_exports_verified": 2,
+    "model_calls_during_read_only_reopen": 0
+  },
+  "evidence_semantics": {
+    "basis": "verified committed answer context presence, not answer quality",
+    "coverage_run_limit": 500,
+    "repeat_and_retry_runs_counted_separately": true,
+    "shared_regulation_library": true,
+    "corrupt_or_unpublished_successful_answers": "unknown",
+    "third_chapter_index": null,
+    "quality_score": null
+  },
+  "remaining_acceptance": [
+    "third_chapter_results_pending_user_materials_per_agreed_scope",
+    "real_provider_single_and_four_dimension_generation",
+    "real_research_fixed_vs_agent_quality_comparison",
+    "target_Windows_GPU_and_formal_server_end_to_end_acceptance"
+  ],
+  "frontend_visual_redesign": {
+    "status": "deferred_until_functional_completion_review",
+    "third_party_skill_installed": false,
+    "requested_direction": "elegant interface and Apple keynote inspired motion"
+  },
+  "data_kind": "explicit_synthetic_fixtures_for_automated_model_paths",
+  "real_external_model_calls": 0,
+  "artifacts": [
+    {
+      "id": 12666726365,
+      "name": "compose-stage67-test-results",
+      "url": "https://github.com/2391552910-coder/da-listed-company-self-discipline-evaluation/actions/runs/40357471554/artifacts/12666726365",
+      "digest": "sha256:1ed10d101ac83e519a522c592f06e2b78b7ec45da852afc21205ce57c47db8e9"
+    },
+    {
+      "id": 12666304235,
+      "name": "windows-stage67-test-results",
+      "url": "https://github.com/2391552910-coder/da-listed-company-self-discipline-evaluation/actions/runs/40357471554/artifacts/12666304235",
+      "digest": "sha256:33ffc5c90e99b635687d615ff9b5331260d67189eec43fc04ac0248ec96e5748"
+    },
+    {
+      "id": 12665514332,
+      "name": "stage67-test-results",
+      "url": "https://github.com/2391552910-coder/da-listed-company-self-discipline-evaluation/actions/runs/40357471554/artifacts/12665514332",
+      "digest": "sha256:a527b5745ee2216f7b234bcace1ee0cd4c782e9d971744937e55decd42af5edd"
+    }
+  ],
+  "code_merge_commit": "8da601756a54904a586c3649b7235404bc09d3e4",
+  "implementation_review": {
+    "status": "identified_query_and_browsing_gaps_addressed",
+    "database_migration_required": false,
+    "overall_research_and_target_environment_acceptance_complete": false
+  }
+}
