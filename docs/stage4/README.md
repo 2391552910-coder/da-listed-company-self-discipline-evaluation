@@ -46,7 +46,7 @@ python -m app.documents.cli worker
 
 ## 验证与待验收
 
-- 本地240项已有与新增测试首轮通过，后续服务/集成测试及CI最终结果另见测试摘要；测试模型响应均标记fixture。
+- 本地完整套件283 passed、4 skipped（FastAPI与PostgreSQL在本地不可用，交CI补验）；最终CI为288 passed，PostgreSQL增量迁移、Vue构建及2条Chromium闭环均通过。其中阶段4核心88项、报告21项均包含在完整套件内，不重复相加。测试模型响应均标记fixture，见[最终测试摘要](test-summary.json)。
 - 真实年报/法规复用阶段3可校验CUDA索引，单题检索10条来源、4898/6000参考token、10条原件位置核对通过。
 - 真实调用返回MODEL_TRANSPORT_FAILED；网络到api.kimi.com:443无法连接。账本保留uncertain和usage unknown，未收到真实模型回答，未执行后续四维真实生成，也未生成真实模型报告。详细记录：[real-validation.json](real-validation.json)。
 - 网络可用后执行 `backend/scripts/smoke_evaluations.py --baseline-state <阶段3状态目录> --work-dir <全新目录> --model-python <CUDA解释器> --llm-env-file <显式配置文件> --output <脱敏摘要.json>`。脚本先单题再四维，失败即停；成功后生成并重新校验HTML/PDF。

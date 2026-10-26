@@ -1,0 +1,98 @@
+{
+  "schema_version": "stage45-test-summary-v1",
+  "executed_date": "2026-10-26",
+  "local": {
+    "passed": 283,
+    "skipped": 4,
+    "failures": 0,
+    "duration_seconds": 171.99,
+    "skip_reasons": [
+      "FastAPI unavailable locally (HTTP tests delegated to CI)",
+      "Disposable PostgreSQL not configured locally (two tests delegated to CI)"
+    ],
+    "stage4_core_included": 88,
+    "report_included": 21
+  },
+  "ci": {
+    "source_commit": "690623093912cd21fcd2abc50dd706e6682bd743",
+    "status": "passed",
+    "backend": {
+      "passed": 288,
+      "failed": 0,
+      "skipped": 0,
+      "duration_seconds": 94.55
+    },
+    "postgresql": {
+      "version": 16,
+      "incremental_migration": "0001_documents -> 0002_contexts -> 0003_evaluations",
+      "legacy_seed_preserved": true
+    },
+    "frontend": {
+      "production_build": "passed",
+      "duration_seconds": 6.48
+    },
+    "browser": {
+      "engine": "Chromium",
+      "passed": 2,
+      "failed": 0,
+      "duration_seconds": 24,
+      "data_kind": "synthetic fixtures and loopback HTTP provider",
+      "paths": [
+        "single question -> persisted answer -> original source -> frozen HTML/PDF downloads -> refresh replay",
+        "complete four-dimensional task -> explicit evidence gaps -> null numeric scores"
+      ]
+    },
+    "runs": [
+      {
+        "id": 40299416158,
+        "job_id": 121493333264,
+        "status": "success"
+      },
+      {
+        "id": 40299409233,
+        "job_id": 121493310805,
+        "status": "success"
+      }
+    ],
+    "artifact_url": "https://github.com/2391552910-coder/da-listed-company-self-discipline-evaluation/actions/runs/40299416158/artifacts/12640011847"
+  },
+  "real": {
+    "retrieval": "passed: real CUDA index, 10 source locations, 4898/6000 reference tokens",
+    "generation": "blocked: MODEL_TRANSPORT_FAILED, 0 real answers received",
+    "record": "../stage4/real-validation.json"
+  },
+  "fixture_warning": "Unit/integration/browser provider responses and browser sources are explicit synthetic fixtures; these do not establish real model quality or legal/semantic support.",
+  "unverified": [
+    "Successful real single-question generation",
+    "Successful real four-dimensional generation",
+    "Exports of real-model evaluations",
+    "Full Windows/server deployment",
+    "Independent human semantic review"
+  ],
+  "implementation": {
+    "stage4": "implemented; real model acceptance blocked",
+    "stage5": "fixture workflow acceptance passed",
+    "code_merged_pr": 3,
+    "code_merge_commit": "318bef81b0e4024eb95ca286d7375e38f19de57f"
+  },
+  "ci_failure_history": [
+    {
+      "run": 40297270031,
+      "result": "1 failed,287 passed",
+      "cause": "HTTP test expected attachment after HTML preview contract changed to inline",
+      "resolution": "Corrected format-specific assertion"
+    },
+    {
+      "run": 40297771492,
+      "result": "288 backend passed; 2 browser failed",
+      "cause": "Element Plus readonly input pointer target covered by placeholder",
+      "resolution": "Click visible select control"
+    },
+    {
+      "run": 40298724303,
+      "result": "288 backend passed; 1 browser passed,1 failed",
+      "cause": "Input test identifier forwarded to native textarea",
+      "resolution": "Fill the identified textarea directly"
+    }
+  ]
+}
