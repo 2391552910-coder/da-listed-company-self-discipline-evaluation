@@ -124,7 +124,7 @@ def test_http_evaluation_evidence_and_report_download(prepared, monkeypatch):
             report_id = exported.json()["data"]["id"]
             downloaded = client.get(f"/api/v1/exports/{report_id}/file")
             assert downloaded.status_code == 200
-            assert "attachment" in downloaded.headers["content-disposition"]
+            assert ("inline" if kind=="html" else "attachment") in downloaded.headers["content-disposition"]
             assert downloaded.headers["x-content-type-options"] == "nosniff"
             if kind == "pdf":
                 assert downloaded.content.startswith(b"%PDF-")
