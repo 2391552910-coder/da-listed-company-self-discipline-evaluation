@@ -20,3 +20,7 @@
 ## 阶段 2 实现与验证
 
 [使用说明、设计细化和验证边界](stage2/README.md) · [真实CUDA验证](stage2/real-validation.json) · [测试摘要](stage2/test-summary.json)
+
+## 阶段 3 上下文与任务
+
+[功能、API、迁移与运行说明](stage3/README.md) · [真实 CUDA 与预算回放](stage3/real-validation.json) · [测试摘要](stage3/test-summary.json)

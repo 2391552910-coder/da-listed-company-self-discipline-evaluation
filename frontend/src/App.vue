@@ -7,6 +7,7 @@
         <el-menu-item index="/">总览看板</el-menu-item>
         <el-menu-item index="/companies">公司管理</el-menu-item>
         <el-menu-item index="/documents">双源文档中心</el-menu-item>
+        <el-menu-item index="/contexts">上下文与任务</el-menu-item>
         <el-menu-item index="/index" disabled>自律指数</el-menu-item>
         <el-menu-item index="/evaluation" disabled>大模型评价</el-menu-item>
         <el-menu-item index="/evidence" disabled>法规检索与证据</el-menu-item>

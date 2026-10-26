@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
 const routes = [
+  { path: '/contexts', component: () => import('../views/ContextWorkbench.vue') },
   { path: '/documents', component: () => import('../views/DocumentCenter.vue') },
   { path: '/', component: () => import('../views/Dashboard.vue') },
   { path: '/companies', component: () => import('../views/CompanyManage.vue') },

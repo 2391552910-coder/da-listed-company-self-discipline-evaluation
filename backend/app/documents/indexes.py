@@ -63,7 +63,9 @@ class Indexes:
             if row["frame_text"][row["char_start"]:row["char_end"]] != row["content"]:
                 raise DomainError("LOCATOR_MISMATCH","片段不能映射回原文",409)
 
-    def _invoke(self, command, directory, profile, heartbeat=None, extra=()):
+    def _invoke(self, command, directory, profile, heartbeat=None, extra=(),deadline=None):
+        if deadline is not None and time.monotonic()>=deadline:
+            raise DomainError("BUDGET_EXHAUSTED","检索运行时间预算已耗尽",409)
         python = self.docs.settings.model_python if profile=="qwen_cuda" else sys.executable
         log = directory / (command+".log")
         env = os.environ.copy()
@@ -77,9 +79,11 @@ class Indexes:
             started, last_beat = time.monotonic(), 0
             try:
                 while process.poll() is None:
+                    if deadline is not None and time.monotonic()>=deadline:
+                        raise DomainError("BUDGET_EXHAUSTED","检索运行时间预算耗尽",409)
                     if time.monotonic()-started > self.docs.settings.model_timeout:
                         raise DomainError("MODEL_TIMEOUT","模型执行超时",503)
-                    if heartbeat and time.monotonic()-last_beat > 20:
+                    if heartbeat and time.monotonic()-last_beat > 1:
                         heartbeat()
                         last_beat=time.monotonic()
                     time.sleep(.2)
@@ -91,7 +95,7 @@ class Indexes:
             if process.returncode:
                 raise DomainError("MODEL_EXECUTION_FAILED","模型执行失败，详见运行环境中的任务日志",503)
 
-    def build(self, payload, heartbeat=None):
+    def build(self, payload, heartbeat=None,job_id=None,worker_id=None):
         index_id=payload["index_id"]
         with self.docs.db.session() as db:
             existing=required(db.one("SELECT status FROM t_index_version WHERE id=?",(index_id,)))
@@ -112,7 +116,12 @@ class Indexes:
             self.docs.storage.read(base+"/dataset.json",manifest["dataset_sha256"])
             if manifest["profile"]!=payload["profile"]:
                 raise DomainError("MODEL_IDENTITY_MISMATCH","索引运行档不匹配",409)
+            if heartbeat:
+                heartbeat()
             with self.docs.db.session() as db:
+                if job_id:
+                    from app.retrieval.service import fence_job
+                    fence_job(db,job_id,worker_id)
                 for ordinal,row in enumerate(rows):
                     db.execute("INSERT INTO t_index_member(index_id,chunk_id,ordinal) VALUES(?,?,?) ON CONFLICT(index_id,chunk_id) DO NOTHING",
                                (index_id,row["id"],ordinal))
@@ -121,8 +130,10 @@ class Indexes:
             return {"index_id":index_id,"profile":payload["profile"],"chunk_count":len(rows),
                     "manifest_sha256":sha(manifest_bytes),"encoder_identity":manifest["encoder_identity"]}
         except Exception:
-            with self.docs.db.session() as db:
-                db.execute("UPDATE t_index_version SET status='failed' WHERE id=? AND status!='ready'",(index_id,))
+            if job_id is None:
+                with self.docs.db.session() as db:
+                    db.execute("UPDATE t_index_version SET status='failed' WHERE id=? AND status!='ready'",(index_id,))
+            # Queued lifecycle changes are fenced and committed with the owning job.
             raise
 
     def validate(self,index_id):
@@ -143,7 +154,9 @@ class Indexes:
             self.docs.storage.read(base+"/vectors.npy",manifest["vector_sha256"])
         return index,manifest,dataset,base
 
-    def search(self,index_id,query,stock_code,report_year,top_k=5,reference_root=None):
+    def search(self,index_id,query,stock_code,report_year,top_k=5,reference_root=None,*,
+               annual_top_k=None,regulation_top_k=None,temporal_filter=False,target_date=None,
+               target_date_role=None,unknown_temporal="retain",heartbeat=None,deadline=None):
         if not query.strip() or len(query)>4000 or not 1<=top_k<=20:
             raise DomainError("INVALID_QUERY","查询为空、过长或top_k超限",422)
         from app.documents.common import code
@@ -151,15 +164,23 @@ class Indexes:
         index,manifest,dataset,base=self.validate(index_id)
         if not any(r["corpus_type"]=="annual_report" and r["stock_code"]==stock_code and r["report_year"]==report_year for r in dataset["rows"]):
             raise DomainError("ANNUAL_SCOPE_EMPTY","索引中没有指定公司年度年报",409)
+        annual_top_k=top_k if annual_top_k is None else annual_top_k
+        regulation_top_k=top_k if regulation_top_k is None else regulation_top_k
+        if any(type(k) is not int or not 1<=k<=20 for k in (annual_top_k,regulation_top_k)):
+            raise DomainError("INVALID_QUERY","候选数量不合法",422)
+        from app.retrieval.temporal import select_regulations
+        _,temporal_audit=select_regulations([r for r in dataset["rows"] if r["corpus_type"]=="regulation"],
+            temporal_filter=temporal_filter,target_date=target_date,target_date_role=target_date_role,
+            unknown_policy=unknown_temporal)
         request_id=uid()
         request_key=f"{base}/queries/{request_id}.json"
         response_key=f"{base}/queries/{request_id}.result.json"
-        self.docs.storage.write(request_key,dump({"query":query,"stock_code":stock_code,"report_year":report_year,"top_k":top_k}).encode())
+        self.docs.storage.write(request_key,dump({"query":query,"stock_code":stock_code,"report_year":report_year,"top_k":top_k,"annual_top_k":annual_top_k,"regulation_top_k":regulation_top_k,"temporal_filter":temporal_filter,"target_date":target_date,"target_date_role":target_date_role,"unknown_temporal":unknown_temporal}).encode())
         extra=[str(self.docs.storage.path(request_key)),str(self.docs.storage.path(response_key))]
         if reference_root:
             # CLI-only trusted configuration, never accepted from HTTP input.
             extra += ["--reference-root",str(Path(reference_root).resolve())]
-        self._invoke("query",self.docs.storage.path(base),index["profile"],extra=extra)
+        self._invoke("query",self.docs.storage.path(base),index["profile"],heartbeat=heartbeat,extra=extra,deadline=deadline)
         result=json.loads(self.docs.storage.read(response_key))
         # Validate again after the model call; changed sources must not be served.
         self.validate(index_id)
@@ -171,7 +192,9 @@ class Indexes:
                     raise DomainError("RETRIEVAL_SCOPE_VIOLATION","检索结果越过指定作用域",409)
                 hit.update(content=row["content"],title=row["title"],version_id=row["version_id"],
                            physical_page=row["physical_page"],char_start=row["char_start"],char_end=row["char_end"],
-                           source_format=row["source_format"],parse_warnings=json.loads(row.get("parse_warnings_json","[]")),source_url=f"/api/v1/chunks/{row['id']}/source")
+                           source_format=row["source_format"],corpus_type=row["corpus_type"],metadata=json.loads(row["metadata_json"]),
+                           frame_sha256=row["frame_sha256"],file_sha256=row["file_sha256"],content_sha256=row["content_sha256"],
+                           parse_warnings=json.loads(row.get("parse_warnings_json","[]")),source_url=f"/api/v1/chunks/{row['id']}/source")
         result.update(index_id=index_id,profile=index["profile"],manifest_sha256=index["manifest_sha256"],
                       warning="仅诊断BM25，未使用稠密模型" if index["profile"]=="bm25_diagnostic" else None)
         return result

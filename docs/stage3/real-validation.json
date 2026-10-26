@@ -1,0 +1,245 @@
+{
+  "schema_version": "stage3-real-context-validation-v1",
+  "executed_at_utc": "2026-10-26T08:04:03.383192+00:00",
+  "status": "passed",
+  "database_profile": "sqlite_diagnostic",
+  "retrieval_profile": "qwen_cuda",
+  "generation_api_calls": 0,
+  "index_manifest_sha256": "7665cb28b37aa6c1dd67a085d1c841d55ea62d551f9e7142238ee27fcc547715",
+  "snapshot_sha256": "05ccbcfe6fbefe85103027eb299c6d4d71a5108d2b68ec699193154c8748b17c",
+  "context_sha256": "8452e0ab85103ada355c77446ee32f8c55129788ce65d3d9c0f49f3b0542ea97",
+  "tokenizer_identity": {
+    "kind": "qwen3",
+    "model": "Qwen/Qwen3-Embedding-0.6B",
+    "revision": "97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3",
+    "tokenizer_sha256": "def76fb086971c7867b829c23a26261e38d9d74e02139253b38aeb9df8b4b50a",
+    "library_version": "0.21.4",
+    "add_special_tokens": false,
+    "budget_unit": "reference_tokens",
+    "is_provider_tokenizer": false,
+    "is_model_tokenizer": true
+  },
+  "max_reference_tokens": 6000,
+  "actual_reference_tokens": 4898,
+  "candidate_counts": {
+    "annual_report": 5,
+    "regulation": 5
+  },
+  "included_count": 10,
+  "omitted_count": 0,
+  "locator_checks": [
+    {
+      "evidence_id": "A1",
+      "role": "annual_report",
+      "physical_page": 30,
+      "file_sha256": "e34eb13835855354f5557f305a5e54d8c910bc9e74ed9ca29f52c2a5ebeb9b04",
+      "content_sha256": "83f34eacbf7f38ce06ce15e1e44f55fa47b44851ed26961b59ba901a839bd9f8",
+      "locator_verified": true
+    },
+    {
+      "evidence_id": "R1",
+      "role": "regulation",
+      "physical_page": 15,
+      "file_sha256": "19a609a9a19110d61215f426d1500a9f9b20a69639d68848ab2295ba69b3d941",
+      "content_sha256": "53e04e6d98ff9f0b906bcd6620228cb024727c9e83c9e57c2ba61c66843af6df",
+      "locator_verified": true
+    },
+    {
+      "evidence_id": "A2",
+      "role": "annual_report",
+      "physical_page": 74,
+      "file_sha256": "e34eb13835855354f5557f305a5e54d8c910bc9e74ed9ca29f52c2a5ebeb9b04",
+      "content_sha256": "d3db1ddd6aa66d957dbda1f7d071728fd52c47c0577c663f75c740b1cd9cced9",
+      "locator_verified": true
+    },
+    {
+      "evidence_id": "R2",
+      "role": "regulation",
+      "physical_page": 13,
+      "file_sha256": "19a609a9a19110d61215f426d1500a9f9b20a69639d68848ab2295ba69b3d941",
+      "content_sha256": "558edd1a9d25ad2e205e43ca0d4ce4270fe99ef436eb286fb0a458da31000600",
+      "locator_verified": true
+    },
+    {
+      "evidence_id": "A3",
+      "role": "annual_report",
+      "physical_page": 43,
+      "file_sha256": "e34eb13835855354f5557f305a5e54d8c910bc9e74ed9ca29f52c2a5ebeb9b04",
+      "content_sha256": "e1ce8cb53a2ee6deb2b53f20443124036850be04f291f61ae395696ca7a8c5b6",
+      "locator_verified": true
+    },
+    {
+      "evidence_id": "R3",
+      "role": "regulation",
+      "physical_page": 12,
+      "file_sha256": "19a609a9a19110d61215f426d1500a9f9b20a69639d68848ab2295ba69b3d941",
+      "content_sha256": "50186b758397ab22b82b23b2487c0b636525d14c9da2dc351829f707846f6687",
+      "locator_verified": true
+    },
+    {
+      "evidence_id": "A4",
+      "role": "annual_report",
+      "physical_page": 38,
+      "file_sha256": "e34eb13835855354f5557f305a5e54d8c910bc9e74ed9ca29f52c2a5ebeb9b04",
+      "content_sha256": "d80ced63d705526c44b1faf44e0c072b754e155475b034e933de8a61ddcdc83c",
+      "locator_verified": true
+    },
+    {
+      "evidence_id": "R4",
+      "role": "regulation",
+      "physical_page": 2,
+      "file_sha256": "19a609a9a19110d61215f426d1500a9f9b20a69639d68848ab2295ba69b3d941",
+      "content_sha256": "2c6732e05553b4296e7b41fd438d702e855b91e2296c80d39afb490cfac23926",
+      "locator_verified": true
+    },
+    {
+      "evidence_id": "A5",
+      "role": "annual_report",
+      "physical_page": 3,
+      "file_sha256": "e34eb13835855354f5557f305a5e54d8c910bc9e74ed9ca29f52c2a5ebeb9b04",
+      "content_sha256": "7dcccced3acde78d9454bc50f8cc851f9d37ada377fbc23a3f2d43f998579038",
+      "locator_verified": true
+    },
+    {
+      "evidence_id": "R5",
+      "role": "regulation",
+      "physical_page": 22,
+      "file_sha256": "19a609a9a19110d61215f426d1500a9f9b20a69639d68848ab2295ba69b3d941",
+      "content_sha256": "38380ca6a8708a81f11c926dd3e76bdcb6159e0b38585def4487b10cb56f7c82",
+      "locator_verified": true
+    }
+  ],
+  "replayed_snapshot_unchanged": true,
+  "cached_budget_replays": [
+    {
+      "budget": 1,
+      "actual_reference_tokens": 0,
+      "evidence_count": 0,
+      "omitted_count": 10,
+      "context_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "diagnostics": {
+        "input_candidate_counts": {
+          "annual_report": 5,
+          "regulation": 5
+        },
+        "unique_candidate_counts": {
+          "annual_report": 5,
+          "regulation": 5
+        },
+        "selected_counts": {
+          "annual_report": 0,
+          "regulation": 0
+        },
+        "duplicate_count": 0,
+        "missing_candidate_roles": [],
+        "missing_context_roles": [
+          "annual_report",
+          "regulation"
+        ],
+        "max_reference_tokens": 1,
+        "remaining_reference_tokens": 1,
+        "has_budget_omissions": true,
+        "budget_exhausted": false,
+        "budget_excluded_all": true,
+        "semantic_support_verified": false
+      }
+    },
+    {
+      "budget": 1000,
+      "actual_reference_tokens": 869,
+      "evidence_count": 2,
+      "omitted_count": 8,
+      "context_sha256": "c450b47c12cb42d721b2e4cf70366f76e51213254fc8d0260ff6efb68645df77",
+      "diagnostics": {
+        "input_candidate_counts": {
+          "annual_report": 5,
+          "regulation": 5
+        },
+        "unique_candidate_counts": {
+          "annual_report": 5,
+          "regulation": 5
+        },
+        "selected_counts": {
+          "annual_report": 2,
+          "regulation": 0
+        },
+        "duplicate_count": 0,
+        "missing_candidate_roles": [],
+        "missing_context_roles": [
+          "regulation"
+        ],
+        "max_reference_tokens": 1000,
+        "remaining_reference_tokens": 131,
+        "has_budget_omissions": true,
+        "budget_exhausted": false,
+        "budget_excluded_all": false,
+        "semantic_support_verified": false
+      }
+    },
+    {
+      "budget": 2000,
+      "actual_reference_tokens": 1948,
+      "evidence_count": 4,
+      "omitted_count": 6,
+      "context_sha256": "5442d5a7a5c18ebaf26ddcedf8a26125eda63f90a42df8e493cff8bcb3895b8b",
+      "diagnostics": {
+        "input_candidate_counts": {
+          "annual_report": 5,
+          "regulation": 5
+        },
+        "unique_candidate_counts": {
+          "annual_report": 5,
+          "regulation": 5
+        },
+        "selected_counts": {
+          "annual_report": 3,
+          "regulation": 1
+        },
+        "duplicate_count": 0,
+        "missing_candidate_roles": [],
+        "missing_context_roles": [],
+        "max_reference_tokens": 2000,
+        "remaining_reference_tokens": 52,
+        "has_budget_omissions": true,
+        "budget_exhausted": false,
+        "budget_excluded_all": false,
+        "semantic_support_verified": false
+      }
+    },
+    {
+      "budget": 6000,
+      "actual_reference_tokens": 4898,
+      "evidence_count": 10,
+      "omitted_count": 0,
+      "context_sha256": "8452e0ab85103ada355c77446ee32f8c55129788ce65d3d9c0f49f3b0542ea97",
+      "diagnostics": {
+        "input_candidate_counts": {
+          "annual_report": 5,
+          "regulation": 5
+        },
+        "unique_candidate_counts": {
+          "annual_report": 5,
+          "regulation": 5
+        },
+        "selected_counts": {
+          "annual_report": 5,
+          "regulation": 5
+        },
+        "duplicate_count": 0,
+        "missing_candidate_roles": [],
+        "missing_context_roles": [],
+        "max_reference_tokens": 6000,
+        "remaining_reference_tokens": 1102,
+        "has_budget_omissions": false,
+        "budget_exhausted": false,
+        "budget_excluded_all": false,
+        "semantic_support_verified": false
+      }
+    }
+  ],
+  "semantic_support_verified": false,
+  "not_verified": [
+    "full server deployment",
+    "browser interaction"
+  ]
+}

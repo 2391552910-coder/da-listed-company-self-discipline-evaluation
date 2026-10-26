@@ -8,7 +8,7 @@ from app.documents.common import DomainError, sha
 
 DEFAULT_CONFIG = {"chunk_chars": 1200, "overlap_chars": 160, "physical_pages": None}
 
-def parse_file(data, file_format, config):
+def parse_file(data, file_format, config, checkpoint=None):
     size, overlap = config["chunk_chars"], config["overlap_chars"]
     if not 100 <= size <= 8000 or not 0 <= overlap < size:
         raise DomainError("INVALID_CHUNK_CONFIG", "分块大小或重叠参数不合法", 422)
@@ -24,6 +24,7 @@ def parse_file(data, file_format, config):
             if config.get("physical_pages"):
                 warnings.append("selected_pages_not_full_document")
             for number in sorted(set(selected)):
+                if checkpoint: checkpoint()
                 text = document[number - 1].get_text("text", sort=False).replace("\r\n", "\n")
                 if not text.strip():
                     warnings.append(f"page_{number}_no_text_requires_ocr")
@@ -54,6 +55,7 @@ def parse_file(data, file_format, config):
     if not any(f["text"].strip() for f in frames):
         raise DomainError("NO_SEARCHABLE_TEXT", "没有可检索文字，请先准备可核查的OCR文字")
     for frame in frames:
+        if checkpoint: checkpoint()
         frame["text_sha256"] = sha(frame["text"].encode())
         frame["spans"] = []
         for start in range(0, len(frame["text"]), size - overlap):

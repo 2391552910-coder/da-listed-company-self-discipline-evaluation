@@ -125,6 +125,8 @@ class Documents:
             return result
 
     def _enqueue(self, db, kind, payload, key=None, request=None):
+        if key is not None and (not isinstance(key,str) or not key.strip() or len(key)>200):
+            raise DomainError("INVALID_IDEMPOTENCY_KEY","幂等键为空或过长",422)
         digest = sha(dump(request or payload).encode())
         if key:
             old = db.one("SELECT * FROM t_job WHERE idempotency_key=?", (key,))
@@ -147,14 +149,19 @@ class Documents:
 
     @staticmethod
     def public_job(row):
-        return {key: row[key] for key in ("id","kind","status","error_code","attempt_count","created_at","updated_at")} | {
-            "result": json.loads(row["result_json"]) if row.get("result_json") else None}
+        result={key:row[key] for key in ("id","kind","status","error_code","attempt_count","created_at","updated_at")}
+        result.update(result=json.loads(row["result_json"]) if row.get("result_json") else None,
+                      cancel_requested=bool(row.get("cancel_requested",0)),parent_job_id=row.get("parent_job_id"),
+                      progress=json.loads(row.get("progress_json") or "{}"))
+        if row["kind"]=="context":
+            result["run_id"]=json.loads(row["payload_json"]).get("run_id")
+        return result
 
     def job(self, job_id):
         with self.db.session() as db:
             return self.public_job(required(db.one("SELECT * FROM t_job WHERE id=?", (job_id,))))
 
-    def parse(self, version_id, config):
+    def parse(self, version_id, config, checkpoint=None, job_id=None, worker_id=None):
         parse_id = uid()
         with self.db.session() as db:
             version = required(db.one("""SELECT v.*,d.corpus_type,d.company_id,d.report_year,c.stock_code,c.stock_name
@@ -164,12 +171,21 @@ class Documents:
                        (parse_id, version_id, "running", dump(config), "pending", "[]", now()))
         try:
             data = self.storage.read(version["storage_key"], version["file_sha256"])
-            frames, identity, warnings = parse_file(data, version["source_format"], config)
+            if checkpoint:
+                checkpoint()
+                frames,identity,warnings=parse_file(data,version["source_format"],config,checkpoint=checkpoint)
+            else:
+                frames,identity,warnings=parse_file(data,version["source_format"],config)
             if version["corpus_type"] == "annual_report":
                 identity["annual_identity"] = check_annual_identity(identity["opening"], version["stock_code"], version["stock_name"], version["report_year"])
             identity.pop("opening", None)
             count = 0
+            if checkpoint:
+                checkpoint()
             with self.db.session() as db:
+                if job_id:
+                    from app.retrieval.service import fence_job
+                    fence_job(db,job_id,worker_id)
                 for ordinal, frame in enumerate(frames):
                     frame_id = uid()
                     db.execute("INSERT INTO t_text_frame(id,parse_id,ordinal,physical_page,text,text_sha256,text_origin) VALUES(?,?,?,?,?,?,?)",
@@ -187,8 +203,9 @@ class Documents:
                     "warnings": warnings, "parser": identity}
         except Exception as error:
             with self.db.session() as db:
-                db.execute("UPDATE t_parse_run SET status='failed',error_code=? WHERE id=?",
-                           (error.code if isinstance(error, DomainError) else "PARSE_FAILED", parse_id))
+                db.execute("UPDATE t_parse_run SET status=?,error_code=? WHERE id=?",
+                           ("cancelled" if isinstance(error,DomainError) and error.code=="TASK_CANCELLED" else "failed",
+                            error.code if isinstance(error,DomainError) else "PARSE_FAILED",parse_id))
             raise
 
     def chunks(self, version_id, parse_id=None, page=1, size=20):
@@ -232,30 +249,55 @@ class Documents:
         self.storage.read(row["storage_key"],row["file_sha256"])
         return self.storage.path(row["storage_key"]), row["filename"]
 
-    def claim_job(self, worker_id):
-        moment = now()
-        lease = (datetime.now(timezone.utc)+timedelta(seconds=600)).isoformat()
+    def claim_job(self,worker_id):
+        moment=now()
+        lease=(datetime.now(timezone.utc)+timedelta(seconds=600)).isoformat()
         with self.db.session() as db:
-            db.execute("UPDATE t_job SET status='failed',error_code='WORKER_ATTEMPTS_EXHAUSTED',updated_at=? WHERE status='running' AND lease_until<? AND attempt_count>=3",(moment,moment))
-            row = db.one("""SELECT * FROM t_job WHERE status='queued' OR
-             (status='running' AND lease_until<? AND attempt_count<3) ORDER BY created_at,id LIMIT 1""",(moment,))
+            expired=db.rows("SELECT * FROM t_job WHERE status='running' AND lease_until<?",(moment,))
+            for old in expired:
+                db.execute("UPDATE t_job_attempt SET status='abandoned',error_code='LEASE_EXPIRED',finished_at=? WHERE job_id=? AND worker_id=? AND attempt_number=? AND status='running'",(moment,old["id"],old["lease_owner"],old["attempt_count"]))
+                if old["cancel_requested"] or old["attempt_count"]>=3:
+                    status="cancelled" if old["cancel_requested"] else "failed"
+                    error="TASK_CANCELLED" if old["cancel_requested"] else "WORKER_ATTEMPTS_EXHAUSTED"
+                    expired_count=db.execute("""UPDATE t_job SET status=?,error_code=?,result_json=NULL,updated_at=?
+                        WHERE id=? AND status='running' AND lease_until=? AND lease_until<?
+                        AND attempt_count=? AND COALESCE(lease_owner,'')=COALESCE(?,'')""",
+                        (status,error,moment,old["id"],old["lease_until"],moment,old["attempt_count"],old["lease_owner"])).rowcount
+                    if expired_count==1 and old["kind"]=="context":
+                        db.execute("UPDATE t_retrieval_run SET status=? WHERE job_id=?",(status,old["id"]))
+            row=db.one("""SELECT * FROM t_job WHERE cancel_requested=0 AND
+                (status='queued' OR (status='running' AND lease_until<? AND attempt_count<3))
+                ORDER BY created_at,id LIMIT 1""",(moment,))
             if not row:
                 return None
-            updated = db.execute("""UPDATE t_job SET status='running',lease_owner=?,lease_until=?,attempt_count=attempt_count+1,updated_at=?
-              WHERE id=? AND (status='queued' OR (status='running' AND lease_until<?))""",
-              (worker_id,lease,moment,row["id"],moment)).rowcount
-            return row if updated else None
+            updated=db.execute("""UPDATE t_job SET status='running',lease_owner=?,lease_until=?,
+                attempt_count=attempt_count+1,updated_at=?,progress_json=?
+                WHERE id=? AND cancel_requested=0 AND (status='queued' OR (status='running' AND lease_until<? AND attempt_count<3))""",
+                (worker_id,lease,moment,dump({"stage":"claimed"}),row["id"],moment)).rowcount
+            if updated!=1:
+                return None
+            claimed=db.one("SELECT * FROM t_job WHERE id=?",(row["id"],))
+            db.execute("""INSERT INTO t_job_attempt
+                (id,job_id,worker_id,attempt_number,started_at,status) VALUES(?,?,?,?,?,?)""",
+                (uid(),row["id"],worker_id,claimed["attempt_count"],moment,"running"))
+            if row["kind"]=="context":
+                db.execute("UPDATE t_retrieval_run SET status='running' WHERE job_id=?",(row["id"],))
+            return claimed
 
-    def heartbeat(self, job_id, worker_id):
-        with self.db.session() as db:
-            count = db.execute("UPDATE t_job SET lease_until=?,updated_at=? WHERE id=? AND status='running' AND lease_owner=?",
-                ((datetime.now(timezone.utc)+timedelta(seconds=600)).isoformat(),now(),job_id,worker_id)).rowcount
-            if count != 1:
-                raise DomainError("LEASE_LOST", "任务租约已丢失",409)
+    def heartbeat(self,job_id,worker_id):
+        from app.documents.jobs import JobControl
+        return JobControl(self).checkpoint(job_id,worker_id)
 
-    def finish(self, job_id, worker_id, result=None, error=None):
-        with self.db.session() as db:
-            count = db.execute("UPDATE t_job SET status=?,result_json=?,error_code=?,lease_until=NULL,updated_at=? WHERE id=? AND lease_owner=? AND status='running'",
-                ("failed" if error else "succeeded",dump(result) if result else None,error,now(),job_id,worker_id)).rowcount
-            if count != 1:
-                raise DomainError("LEASE_LOST", "结果提交时任务租约已丢失",409)
+    def finish(self,job_id,worker_id,result=None,error=None,status=None):
+        from app.documents.jobs import JobControl
+        return JobControl(self).finish(job_id,worker_id,result,error,status)
+
+    def retry_payload(self,kind,payload,db):
+        if kind!="context":
+            raise DomainError("RETRY_PAYLOAD_UNAVAILABLE","该类型缺少重试身份适配",409)
+        from app.retrieval.service import Contexts
+        parent=required(db.one("SELECT * FROM t_retrieval_run WHERE id=?",(payload.get("run_id"),)))
+        request=payload.get("request")
+        if not isinstance(request,dict) or sha(dump(request).encode())!=parent["request_sha256"]:
+            raise DomainError("REQUEST_SNAPSHOT_MISMATCH","历史重试请求与运行快照不一致",409)
+        return {"run_id":Contexts.new_run(db,request,parent["id"]),"request":request}

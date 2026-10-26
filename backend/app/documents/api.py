@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from typing import Literal
 from fastapi import FastAPI, File, Form, Header, Query, UploadFile
 from fastapi.responses import FileResponse, JSONResponse
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictInt
 from app.documents.common import DomainError
 from app.documents.indexes import Indexes
 from app.documents.service import Documents
@@ -34,12 +34,34 @@ class SearchIn(StrictModel):
     report_year:int=Field(ge=1990,le=2100)
     top_k:int=Field(5,ge=1,le=20)
 
+
+class ContextIn(StrictModel):
+    index_id:str
+    query:str=Field(min_length=1,max_length=4000)
+    stock_code:str
+    report_year:StrictInt=Field(ge=1990,le=2100)
+    annual_top_k:StrictInt=Field(5,ge=1,le=20)
+    regulation_top_k:StrictInt=Field(5,ge=1,le=20)
+    max_reference_tokens:StrictInt=Field(6000,ge=1,le=32000)
+    tokenizer_kind:Literal["qwen3","utf8_diagnostic"]="qwen3"
+    temporal_filter:StrictBool=False
+    target_date:str|None=None
+    target_date_role:Literal["event_date","evaluation_date"]|None=None
+    unknown_temporal:Literal["retain","exclude"]="retain"
+    max_runtime_seconds:StrictInt=Field(600,ge=1,le=3600)
+
+
 def create_app(settings=None):
     documents=Documents(settings or Settings.from_env())
     indexes=Indexes(documents)
-    app=FastAPI(title="上市公司主体自律评价系统",version="0.2.0",
-                description="阶段2：双源文档、定位和研究索引；第三章与生成评价待接入")
+    from app.documents.jobs import JobControl
+    from app.retrieval.service import Contexts
+    jobs=JobControl(documents)
+    contexts=Contexts(documents)
+    app=FastAPI(title="上市公司主体自律评价系统",version="0.3.0",
+                description="阶段3：双源检索、冻结上下文与可恢复任务；生成评价及第三章结果待接入")
     app.state.documents=documents
+    app.state.contexts=contexts
 
     @app.exception_handler(DomainError)
     async def domain_error(request,error):
@@ -117,6 +139,30 @@ def create_app(settings=None):
     @app.get("/api/v1/indexes")
     def index_list():
         return ok(indexes.list())
+
+    @app.get("/api/v1/jobs")
+    def job_list(page:int=Query(1,ge=1),page_size:int=Query(20,ge=1,le=200),status:str|None=None):
+        return ok(jobs.list(page,page_size,status))
+
+    @app.post("/api/v1/jobs/{job_id}/cancel")
+    def cancel_job(job_id:str):
+        return ok(jobs.cancel(job_id))
+
+    @app.post("/api/v1/jobs/{job_id}/retry",status_code=202)
+    def retry_job(job_id:str,idempotency_key:str|None=Header(None)):
+        return ok(jobs.retry(job_id,idempotency_key))
+
+    @app.post("/api/v1/retrieval/contexts",status_code=202)
+    def create_context(payload:ContextIn,idempotency_key:str|None=Header(None)):
+        return ok(contexts.enqueue(**payload.model_dump(),key=idempotency_key))
+
+    @app.get("/api/v1/retrieval/contexts")
+    def context_list(page:int=Query(1,ge=1),page_size:int=Query(20,ge=1,le=200)):
+        return ok(contexts.list(page,page_size))
+
+    @app.get("/api/v1/retrieval/contexts/{run_id}")
+    def context_run(run_id:str):
+        return ok(contexts.get(run_id))
 
     @app.get("/api/v1/jobs/{job_id}")
     def job(job_id:str):

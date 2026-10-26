@@ -1,0 +1,18 @@
+{
+  "schema_version": "stage3-test-summary-v1",
+  "local": {
+    "passed": 159,
+    "skipped": 3,
+    "errors": 0,
+    "failures": 0,
+    "scope": "Last full run; new concurrent-idempotency and runtime-boundary cases pending final verification"
+  },
+  "ci": {
+    "status": "pending"
+  },
+  "real_validation": "real-validation.json",
+  "notes": [
+    "Local Web dependencies unavailable; HTTP suite runs in CI",
+    "Local PostgreSQL unavailable; incremental migration and PostgreSQL lifecycle run in CI"
+  ]
+}
