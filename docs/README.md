@@ -32,3 +32,11 @@
 ## 阶段5 工作台与报告
 
 [页面流程、冻结导出与浏览器验收](stage5/README.md) · [最终测试摘要](stage5/test-summary.json)
+
+## 阶段6 实验与Agent扩展
+
+[受限Agent、实验协议、评分与历史隔离](stage6/README.md)
+
+## 阶段7 部署与交付
+
+[双环境启动、持久化、备份恢复与交付检查](stage7/README.md)

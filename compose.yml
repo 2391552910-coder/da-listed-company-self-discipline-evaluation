@@ -1,0 +1,102 @@
+# Formal single-researcher delivery profile. Default retrieval is explicit BM25
+# diagnostics; native CUDA services use deploy/compose.native.yml instead.
+name: ${COMPOSE_PROJECT_NAME:-dalun}
+x-database: &database
+  APP_DATABASE_URL: ${APP_DATABASE_URL:-}
+  APP_DATABASE_HOST: postgres
+  APP_DATABASE_PORT: "5432"
+  APP_DATABASE_NAME: self_discipline
+  APP_DATABASE_USER: postgres
+  APP_DATABASE_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in an explicit environment file}
+  APP_DATA_ROOT: /data
+x-application: &application
+  <<: *database
+  MODEL_PYTHON: python
+  MODEL_TIMEOUT_SECONDS: ${MODEL_TIMEOUT_SECONDS:-3600}
+  MAX_UPLOAD_BYTES: ${MAX_UPLOAD_BYTES:-104857600}
+  LLM_BASE_URL: ${LLM_BASE_URL:-}
+  LLM_API_KEY: ${LLM_API_KEY:-}
+  LLM_MODEL: ${LLM_MODEL:-}
+  LLM_TEMPERATURE: ${LLM_TEMPERATURE:-}
+  LLM_JSON_MODE: ${LLM_JSON_MODE:-true}
+services:
+  postgres:
+    image: postgres:16-bookworm
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      POSTGRES_DB: self_discipline
+    volumes: ["database:/var/lib/postgresql/data"]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d self_discipline"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    logging: &logging
+      driver: json-file
+      options: {max-size: "10m", max-file: "3"}
+  migrate:
+    image: ${DALUN_BACKEND_IMAGE:-dalun-backend:local}
+    build: ./backend
+    environment: *database
+    volumes: ["assets:/data"]
+    command: ["python", "-m", "alembic", "-c", "alembic.ini", "upgrade", "head"]
+    restart: "no"
+    depends_on:
+      postgres: {condition: service_healthy}
+    logging: *logging
+  backend:
+    image: ${DALUN_BACKEND_IMAGE:-dalun-backend:local}
+    build: ./backend
+    environment: *application
+    volumes: ["assets:/data"]
+    expose: ["8000"]
+    restart: unless-stopped
+    init: true
+    stop_grace_period: 30s
+    healthcheck:
+      test: ["CMD", "python", "-m", "app.operations.health", "api", "--base-url", "http://127.0.0.1:8000"]
+      interval: 15s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+    logging: *logging
+  worker:
+    image: ${DALUN_BACKEND_IMAGE:-dalun-backend:local}
+    build: ./backend
+    environment: *application
+    volumes: ["assets:/data"]
+    command: ["python", "-m", "app.documents.cli", "worker"]
+    restart: unless-stopped
+    init: true
+    stop_grace_period: 45s
+    healthcheck:
+      test: ["CMD", "python", "-m", "app.operations.health", "worker", "--max-age-seconds", "60"]
+      interval: 15s
+      timeout: 5s
+      retries: 4
+      start_period: 20s
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+    logging: *logging
+  frontend:
+    image: ${DALUN_FRONTEND_IMAGE:-dalun-frontend:local}
+    build: ./frontend
+    ports: ["${DALUN_BIND_ADDRESS:-127.0.0.1}:${DALUN_WEB_PORT:-8080}:80"]
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--spider", "http://127.0.0.1/health/ready"]
+      interval: 15s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
+    depends_on:
+      backend: {condition: service_healthy}
+    logging: *logging
+volumes:
+  database:
+  assets:

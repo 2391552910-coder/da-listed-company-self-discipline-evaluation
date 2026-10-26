@@ -1,0 +1,95 @@
+import { test, expect } from '@playwright/test'
+import fs from 'node:fs/promises'
+
+// Real UI/API/worker/transport, synthetic documents and HTTP provider. These
+// assertions validate workflow and provenance, never research model quality.
+test('bounded Agent records planning, retrieval and model-only verification', async ({ page }) => {
+  await page.goto('/evaluations/new?stock_code=019997')
+  await page.getByTestId('evaluation-index').click()
+  await page.getByRole('option', { name: /bm25_diagnostic/ }).click()
+  await page.getByTestId('evaluation-mode').getByText('Agent 扩展', { exact: true }).click()
+  await page.getByTestId('evaluation-question').fill('依据合成年报与规则，审计委员会履职有哪些可观察依据与限制？')
+  await page.getByText('检索与法规时点', { exact: true }).click()
+  await page.getByTestId('evaluation-tokenizer').click()
+  await page.getByRole('option', { name: 'UTF-8 字节诊断（不是 tokens）' }).click()
+  await page.getByTestId('evaluation-submit').click()
+  await expect(page).toHaveURL(/\/evaluations\/[0-9a-f-]{36}$/)
+  await expect(page.getByTestId('detail-answer-text')).toContainText('浏览器验收合成回答')
+  await page.getByText('Agent 规划、补检索、核验与修订轨迹', { exact: true }).click()
+  await expect(page.getByTestId('agent-trace')).toBeVisible()
+  await expect(page.getByTestId('agent-trace')).toContainText('不等于独立语义核实')
+  const runId = new URL(page.url()).pathname.split('/').pop()
+  const response = await page.request.get('/api/v1/evaluations/' + runId)
+  expect(response.ok()).toBeTruthy()
+  const run = (await response.json()).data
+  const trace = run.snapshot.answers[0].agent_trace
+  expect(run.request.mode).toBe('dual_agent')
+  for (const kind of ['plan', 'retrieval', 'draft', 'verify']) expect(trace.steps.some(step => step.kind === kind)).toBeTruthy()
+  expect(trace.supplemental_calls_used).toBeGreaterThan(0)
+  expect(trace.semantic_support_verified).toBe(false)
+  expect(trace.human_review_status).toBe('not_reviewed')
+  expect(run.model_calls.length).toBeLessThanOrEqual(run.request.budget.max_model_calls)
+  await page.screenshot({ path: '../test-results/browser-agent-trace.png', fullPage: true })
+})
+
+test('frozen experiment separates actual runs, manual scores and snapshot exports', async ({ page }) => {
+  await page.goto('/experiments')
+  await expect(page.getByRole('heading', { name: '实验与对照', exact: true })).toBeVisible()
+  await page.getByTestId('experiment-name').fill('浏览器合成对照实验（非研究结果）')
+  await page.getByTestId('experiment-case-company-0').click()
+  await page.getByRole('option', { name: /019997/ }).click()
+  await page.getByTestId('experiment-case-index-0').click()
+  await page.getByRole('option', { name: /bm25_diagnostic/ }).click()
+  await page.getByTestId('experiment-question').fill('依据合成年报与规则，审计委员会履职有哪些证据与限制？')
+  await page.getByText('共同检索、模型与总调用预算', { exact: true }).click()
+  await page.getByTestId('experiment-tokenizer').click()
+  await page.getByRole('option', { name: 'UTF-8 字节诊断（不是 tokens）' }).click()
+  await page.getByTestId('experiment-create').click()
+  await expect(page).toHaveURL(/\/experiments\?experiment_id=[0-9a-f-]{36}$/)
+  await expect(page.getByTestId('experiment-detail')).toBeVisible()
+  const id = new URL(page.url()).searchParams.get('experiment_id')
+  let experiment
+  await expect.poll(async () => {
+    const response = await page.request.get('/api/v1/experiments/' + id)
+    expect(response.ok()).toBeTruthy()
+    experiment = (await response.json()).data
+    return experiment.items.map(item => item.status)
+  }, { timeout: 60000 }).toEqual(['succeeded', 'succeeded'])
+  expect(experiment.items.every(item => item.origin === 'new_run')).toBeTruthy()
+  expect(experiment.comparison.runs.every(run => run.quality_score === null)).toBeTruthy()
+  expect(experiment.comparison.groups.some(group => group.comparable)).toBeTruthy()
+  await page.getByRole('tab', { name: '独立评分记录', exact: true }).click()
+  await page.getByTestId('rating-run').click()
+  await page.getByRole('option', { name: /C1.*固定双源/ }).click()
+  await page.getByTestId('rating-answer').click()
+  await page.getByRole('option', { name: /experiment-1/ }).click()
+  await page.getByTestId('rating-faithfulness').click()
+  await page.getByRole('option', { name: '4', exact: true }).click()
+  await page.getByTestId('rating-reviewer').fill('浏览器合成评分人（非研究评分）')
+  await page.getByTestId('rating-method').fill('browser-fixture-manual-v1')
+  await page.getByTestId('rating-submit').click()
+  await expect.poll(async () => {
+    const response = await page.request.get('/api/v1/experiments/' + id)
+    experiment = (await response.json()).data
+    return experiment.ratings.length
+  }).toBe(1)
+  expect(experiment.ratings[0].source_kind).toBe('manual')
+  expect(experiment.ratings[0].values.faithfulness).toBe(4)
+  expect(experiment.ratings[0].values.coverage).toBeNull()
+  expect(experiment.comparison.rating_groups.every(group => group.quality_mean === null)).toBeTruthy()
+  const jsonPromise = page.waitForEvent('download')
+  await page.getByTestId('experiment-export-json').click()
+  const jsonDownload = await jsonPromise
+  const json = JSON.parse(await fs.readFile(await jsonDownload.path(), 'utf8'))
+  expect(JSON.stringify(json)).toContain('浏览器合成对照实验')
+  expect(JSON.stringify(json)).toContain(id)
+  const csvPromise = page.waitForEvent('download')
+  await page.getByTestId('experiment-export-csv').click()
+  const csvDownload = await csvPromise
+  const csv = await fs.readFile(await csvDownload.path(), 'utf8')
+  expect(csv).toContain('dual_fixed')
+  expect(csv).toContain('dual_agent')
+  await page.reload()
+  await expect(page.getByTestId('experiment-detail')).toContainText('浏览器合成对照实验')
+  await page.screenshot({ path: '../test-results/browser-experiment.png', fullPage: true })
+})

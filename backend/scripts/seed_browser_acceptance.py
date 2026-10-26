@@ -39,6 +39,14 @@ class FixtureProvider(BaseHTTPRequestHandler):
             self.send_error(413)
             return
         request = json.loads(self.rfile.read(length))
+        system = request["messages"][0]["content"]
+        if system.startswith("[DALUN_AGENT_PLAN_V1]"):
+            self.respond({"action":"retrieve","query":"审计委员会履职与信息披露",
+                          "source_role":"both","reason":"合成规划，仅验证受限补检索和持久轨迹。"})
+            return
+        if system.startswith("[DALUN_AGENT_VERIFY_V1]"):
+            self.respond({"decision":"accept","reason":"合成自检，不构成独立复核。","issues":[]})
+            return
         user = json.loads(request["messages"][-1]["content"])
         context = user["final_context"]
         citations = []
@@ -56,6 +64,9 @@ class FixtureProvider(BaseHTTPRequestHandler):
             "claims": [{"id": "C1", "text": "当前测试上下文包含合成年报与合成规则片段。",
                         "support_status": "unknown", "citations": citations}],
         }
+        self.respond(answer)
+
+    def respond(self,answer):
         payload = {"id": "browser-fixture-" + str(uuid4()), "model": FIXTURE_MODEL,
                    "choices": [{"message": {"content": json.dumps(answer, ensure_ascii=False)}, "finish_reason": "stop"}],
                    # These numbers are explicit fixture usage, not measured tokens.

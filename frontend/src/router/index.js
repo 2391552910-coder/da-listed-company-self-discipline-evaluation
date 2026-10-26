@@ -8,6 +8,7 @@ const routes = [
   { path:'/evaluations/new', component:()=>import('../views/EvaluationWorkspace.vue') },
   { path:'/evaluations/:id', component:()=>import('../views/EvaluationDetail.vue') },
   { path:'/tasks', component:()=>import('../views/TaskCenter.vue') },
+  { path:'/experiments', component:()=>import('../views/ExperimentCenter.vue') },
   { path:'/reports-export', component:()=>import('../views/ReportExport.vue') },
   { path:'/evaluation', redirect:'/evaluations' },
   { path:'/report', redirect:'/reports-export' },

@@ -85,6 +85,72 @@ class EvaluationIn(StrictModel):
     retrieval:EvaluationRetrievalIn=Field(default_factory=EvaluationRetrievalIn)
     budget:EvaluationBudgetIn=Field(default_factory=EvaluationBudgetIn)
     model:str|None=Field(None,min_length=1,max_length=160)
+    mode:Literal["dual_fixed","dual_agent"]="dual_fixed"
+    agent:"AgentIn | None"=None
+
+
+class AgentIn(StrictModel):
+    max_rounds:StrictInt=Field(1,ge=1,le=3)
+    max_supplemental_calls:StrictInt=Field(4,ge=0,le=12)
+    allow_revision:StrictBool=True
+
+
+EvaluationIn.model_rebuild()
+
+
+class ExperimentCaseIn(StrictModel):
+    key:str=Field(min_length=1,max_length=64)
+    index_id:str
+    stock_code:str
+    report_year:StrictInt=Field(ge=1990,le=2100)
+
+
+class ExperimentIn(StrictModel):
+    name:str=Field(min_length=1,max_length=200)
+    cases:list[ExperimentCaseIn]=Field(min_length=1,max_length=8)
+    modes:list[Literal["dual_fixed","dual_agent"]]=Field(default_factory=lambda:["dual_fixed","dual_agent"],min_length=1,max_length=2)
+    question_set_version:Literal["four-dim-v1"]="four-dim-v1"
+    questions:list[EvaluationQuestionIn]|None=Field(None,min_length=1,max_length=24)
+    retrieval:EvaluationRetrievalIn=Field(default_factory=EvaluationRetrievalIn)
+    budget:EvaluationBudgetIn=Field(default_factory=lambda:EvaluationBudgetIn(max_model_calls=16))
+    agent:AgentIn|None=None
+    model:str|None=Field(None,min_length=1,max_length=160)
+    max_total_model_calls:StrictInt=Field(128,ge=1,le=128)
+
+
+class ExperimentRatingIn(StrictModel):
+    run_id:str
+    answer_id:str
+    source_kind:Literal["manual","automatic"]
+    rubric_version:str=Field(min_length=1,max_length=80)
+    values:dict[str,StrictInt|None]
+    reviewer:str=Field(min_length=1,max_length=160)
+    method_version:str=Field(min_length=1,max_length=160)
+    comment:str=Field("",max_length=4000)
+    supersedes_score_id:str|None=None
+
+
+class AttachRunIn(StrictModel):
+    run_id:str
+    label:str=Field("",max_length=200)
+
+
+class HistoryRecordIn(StrictModel):
+    record_key:str=Field(min_length=1,max_length=100)
+    mode:Literal["dual_fixed","dual_agent","unknown"]
+    status:Literal["succeeded","failed","not_run","unknown"]|None=None
+    stock_code:str|None=None
+    report_year:StrictInt|None=Field(None,ge=1990,le=2100)
+    question:str|None=Field(None,max_length=20000)
+    answer:str|None=Field(None,max_length=20000)
+    notes:str|None=Field(None,max_length=20000)
+    quality_scores:dict[str,StrictInt|None]|None=None
+
+
+class ImportHistoryIn(StrictModel):
+    label:str=Field(min_length=1,max_length=200)
+    source_identity:str=Field(min_length=1,max_length=500)
+    records:list[HistoryRecordIn]=Field(min_length=1,max_length=200)
 
 
 class ExportIn(StrictModel):
@@ -102,12 +168,15 @@ def create_app(settings=None):
     from app.reports.service import Reports
     evaluations=Evaluations(documents)
     reports=Reports(documents)
-    app=FastAPI(title="上市公司主体自律评价系统",version="0.5.0",
-                description="双源检索、可追溯模型评价与报告导出；第三章指数结果待接入")
+    from app.experiments.service import Experiments
+    experiments=Experiments(documents)
+    app=FastAPI(title="上市公司主体自律评价系统",version="0.7.0",
+                description="双源评价、受预算约束的Agent、实验对照与可追溯交付；第三章指数结果待接入")
     app.state.documents=documents
     app.state.contexts=contexts
     app.state.evaluations=evaluations
     app.state.reports=reports
+    app.state.experiments=experiments
 
     @app.exception_handler(DomainError)
     async def domain_error(request,error):
@@ -129,7 +198,20 @@ def create_app(settings=None):
             raise
         except Exception:
             raise DomainError("DATABASE_UNAVAILABLE","数据库未就绪",503)
-        return {"status":"ok","database_profile":documents.db.dialect}
+        import uuid
+        probe="health/"+str(uuid.uuid4())+".check"
+        try:
+            documents.storage.write(probe,b"ready")
+            documents.storage.path(probe).unlink()
+        except Exception:
+            raise DomainError("STORAGE_UNAVAILABLE","持久文件存储不可写",503)
+        return {"status":"ok","database_profile":documents.db.dialect,"storage":"writable","schema_revision":5}
+
+    @app.get("/health/workers")
+    def healthy_workers():
+        from app.documents.worker_health import worker_health
+        result=worker_health(documents)
+        return JSONResponse(status_code=200 if result["healthy"] else 503,content=result)
 
     @app.get("/api/v1/companies")
     def companies():
@@ -286,5 +368,50 @@ def create_app(settings=None):
     @app.post("/api/v1/retrieval/search")
     def search(payload:SearchIn):
         return ok(indexes.search(**payload.model_dump()))
+
+    @app.get("/api/v1/experiments/rubrics")
+    def experiment_rubrics():
+        return ok(experiments.rubrics())
+
+    @app.post("/api/v1/experiments",status_code=202)
+    def experiment_create(payload:ExperimentIn,idempotency_key:str|None=Header(None)):
+        return ok(experiments.create(**payload.model_dump(),key=idempotency_key))
+
+    @app.get("/api/v1/experiments")
+    def experiment_list(page:int=Query(1,ge=1),page_size:int=Query(20,ge=1,le=200)):
+        return ok(experiments.list(page,page_size))
+
+    @app.get("/api/v1/experiments/{experiment_id}")
+    def experiment_detail(experiment_id:str):
+        return ok(experiments.get(experiment_id))
+
+    @app.post("/api/v1/experiments/{experiment_id}/dispatch",status_code=202)
+    def experiment_dispatch(experiment_id:str):
+        return ok(experiments.dispatch(experiment_id))
+
+    @app.post("/api/v1/experiments/{experiment_id}/cancel")
+    def experiment_cancel(experiment_id:str):
+        return ok(experiments.cancel(experiment_id))
+
+    @app.post("/api/v1/experiments/{experiment_id}/ratings",status_code=201)
+    def experiment_rate(experiment_id:str,payload:ExperimentRatingIn,idempotency_key:str|None=Header(None)):
+        return ok(experiments.add_rating(experiment_id,**payload.model_dump(),key=idempotency_key))
+
+    @app.post("/api/v1/experiments/{experiment_id}/runs",status_code=201)
+    def experiment_attach(experiment_id:str,payload:AttachRunIn):
+        return ok(experiments.attach(experiment_id,**payload.model_dump()))
+
+    @app.post("/api/v1/experiments/{experiment_id}/history",status_code=201)
+    def experiment_import_history(experiment_id:str,payload:ImportHistoryIn,idempotency_key:str|None=Header(None)):
+        return ok(experiments.import_history(experiment_id,**payload.model_dump(exclude_none=True),key=idempotency_key))
+
+    @app.get("/api/v1/experiments/{experiment_id}/exports")
+    def experiment_export(experiment_id:str,format:Literal["json","csv"]="json"):
+        from fastapi.responses import Response
+        from urllib.parse import quote
+        content,metadata=experiments.export(experiment_id,format=format)
+        return Response(content,media_type=metadata["media_type"],headers={
+            "Content-Disposition":"attachment; filename*=UTF-8''"+quote(metadata["filename"]),
+            "X-Content-Type-Options":"nosniff","X-Snapshot-SHA256":metadata["snapshot_sha256"]})
 
     return app

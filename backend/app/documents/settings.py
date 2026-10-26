@@ -1,12 +1,42 @@
 from dataclasses import dataclass, field
 from pathlib import Path
 import os
+import ipaddress
+import re
+from urllib.parse import quote
 
 BACKEND = Path(__file__).resolve().parents[2]
 
+
+def database_url_from_env():
+    explicit=os.getenv("APP_DATABASE_URL")
+    if explicit:
+        return explicit
+    host=os.getenv("APP_DATABASE_HOST")
+    if not host:
+        return "postgresql+psycopg://postgres:postgres@localhost:5432/self_discipline"
+    try:
+        host=host.strip()
+        if ":" in host:
+            host="["+str(ipaddress.IPv6Address(host.strip("[]")))+"]"
+        elif not re.fullmatch(r"[A-Za-z0-9](?:[A-Za-z0-9._-]{0,251}[A-Za-z0-9])?",host):
+            raise ValueError()
+        port=os.getenv("APP_DATABASE_PORT","5432")
+        name=os.getenv("APP_DATABASE_NAME","self_discipline")
+        user=os.getenv("APP_DATABASE_USER","postgres")
+        if not port.isascii() or not port.isdigit() or not 1<=int(port)<=65535:
+            raise ValueError()
+        if not re.fullmatch(r"[A-Za-z0-9_]{1,63}",name) or not user or len(user)>128:
+            raise ValueError()
+    except ValueError:
+        from app.documents.common import DomainError
+        raise DomainError("INVALID_DATABASE_CONFIG","数据库连接字段不合法；未输出凭据",422)
+    password=os.getenv("APP_DATABASE_PASSWORD","")
+    return f"postgresql+psycopg://{quote(user,safe='')}:{quote(password,safe='')}@{host}:{int(port)}/{name}"
+
 @dataclass(frozen=True)
 class Settings:
-    database_url: str
+    database_url: str = field(repr=False)
     data_root: Path
     model_python: str
     max_upload_bytes: int = 100 * 1024 * 1024
@@ -27,7 +57,7 @@ class Settings:
             from dotenv import load_dotenv
             load_dotenv(Path(env_file).resolve(), override=False)
         return cls(
-            os.getenv("APP_DATABASE_URL", "postgresql+psycopg://postgres:postgres@localhost:5432/self_discipline"),
+            database_url_from_env(),
             Path(os.getenv("APP_DATA_ROOT", str(BACKEND / "runtime"))).resolve(),
             os.getenv("MODEL_PYTHON", "python"),
             int(os.getenv("MAX_UPLOAD_BYTES", str(100 * 1024 * 1024))),
