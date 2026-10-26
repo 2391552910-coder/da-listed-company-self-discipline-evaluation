@@ -8,7 +8,7 @@ test('persistent evaluation, original evidence, and frozen HTML/PDF downloads', 
   await expect(page.getByRole('heading', { name: '评价工作台' })).toBeVisible()
   await page.getByTestId('evaluation-index').click()
   await page.getByRole('option', { name: /bm25_diagnostic/ }).click()
-  await page.getByTestId('evaluation-question').locator('textarea').fill('依据年报和规则，审计委员会履职有哪些可观察依据与限制？')
+  await page.getByTestId('evaluation-question').fill('依据年报和规则，审计委员会履职有哪些可观察依据与限制？')
   await page.getByText('检索与法规时点', { exact: true }).click()
   await page.getByTestId('evaluation-tokenizer').click()
   await page.getByRole('option', { name: 'UTF-8 字节诊断（不是 tokens）' }).click()
