@@ -1,13 +1,13 @@
 # 接口与页面设计
 
-状态：待实现契约。沿用 /api/v1；现有 /reports 是年报，/reports-export 是报告导出，新增 /documents 避免进一步混淆。
+状态：阶段1设计基线；当前实现与完成度核查见 [功能补齐](../completion/README.md)。沿用 /api/v1；现有 /reports 是年报，/reports-export 是报告导出，新增 /documents 避免进一步混淆。
 
 ## 接口清单
 
 | 方法与路径 | 用途 | 当前实现处理 |
 | --- | --- | --- |
 | GET/POST /companies | 公司分页与录入 | 保留，补 total 及校验 |
-| GET /dashboard?year=2024 | 文档、任务、覆盖统计，指数可空 | 新增，替换固定图表 |
+| GET /dashboard?company_id=1&year=2024 | 文档、任务、覆盖统计，指数可空 | 新增，替换固定图表 |
 | POST /documents/upload | multipart 上传年报/法规及身份字段 | 新增；旧 /reports/upload 过渡代理 |
 | GET /documents | 按来源、公司、年度、状态筛选 | 新增 |
 | GET /documents/{id}/versions | 文档版本历史 | 新增 |
@@ -120,3 +120,12 @@ POST /evaluations/run 旧同步接口在迁移期明确返回 legacy 流程标�
 实验页先提供可比运行的筛选与表格，质量评测需有独立评分导入；不因两条运行都成功就自动给出质量提升结论。旧 /evaluation、/import、/report 可在新页面上线后重定向，避免同时维护两套业务路径。
 
 界面采用清晰中文、白底、克制配色和宽度自适应布局。证据显示来源角色、定位状态、模型判断与人工复核状态，避免单个“可信”绿标概括全部含义。
+
+
+## 完成度核查后的接口补充
+
+- `GET /companies` 接受 `page`、`page_size`（默认20，上限200）、`q`（股票代码/名称字面子串），以及精确 `company_id` / `stock_code`；过滤条件取交集，返回 `items/total/page/page_size`。内部研究CLI的公司列表契约保留，Web选择器改为远程搜索和精确回填。
+- `GET /dashboard` 接受可选 `company_id` 与 `year`，共享法规与限定年报分开计数。冻结上下文来源覆盖、机械引用计数和模型自报不足分别列示，质量分保持空值。
+- `GET /evaluations` 增加 `mode=dual_fixed|dual_agent`，可与公司/年度/状态分页组合；历史请求没有mode时归入固定双源。
+- 文档列表按已有来源/公司/年度参数筛选，解析片段浏览显式携带固定 `version_id/parse_id/page/page_size`。
+- 人工证据复核仍为未复核的只读展示，未新增确认/拒绝写接口；实验质量评分独立记录。本文早期“对失败单元重试”已由阶段3/4细化为终止失败任务的整运行新身份重试，部分成功任务不提供逐题重试。

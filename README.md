@@ -4,6 +4,8 @@
 
 **当前已完成阶段6实验/Agent扩展与阶段7部署/交付代码，并通过CI工程验证。** Linux 478项、Windows 475项测试通过（Windows另3项PG测试在Linux执行），4条Chromium流程、正式Compose/Nginx/Worker、应用重启持久化和PostgreSQL冷备恢复通过。使用说明见[阶段6](docs/stage6/README.md)与[阶段7](docs/stage7/README.md)。模型测试响应明确为合成资料，真实模型生成及正式服务器上线需独立验收；阶段4阻塞记录保留。第三章指数仍待资料接入。
 
+**完成度复核发现并补齐了总览聚合、公司搜索分页、文档范围筛选、片段翻页和评价方法筛选。** 设计实现与外部验收分开记录，详见[完成度核查](docs/completion/README.md)。本轮优先补功能，前端视觉与动效改版后置。
+
 ## 设计入口
 
 - [文档导航与阶段状态](docs/README.md)

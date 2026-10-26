@@ -170,7 +170,7 @@ def create_app(settings=None):
     reports=Reports(documents)
     from app.experiments.service import Experiments
     experiments=Experiments(documents)
-    app=FastAPI(title="上市公司主体自律评价系统",version="0.7.0",
+    app=FastAPI(title="上市公司主体自律评价系统",version="0.8.0",
                 description="双源评价、受预算约束的Agent、实验对照与可追溯交付；第三章指数结果待接入")
     app.state.documents=documents
     app.state.contexts=contexts
@@ -214,9 +214,15 @@ def create_app(settings=None):
         return JSONResponse(status_code=200 if result["healthy"] else 503,content=result)
 
     @app.get("/api/v1/companies")
-    def companies():
-        items=documents.companies()
-        return ok({"items":items,"total":len(items)})
+    def companies(page:int=Query(1,ge=1,le=1000000),page_size:int=Query(20,ge=1,le=200),
+                  q:str|None=Query(None,max_length=128),company_id:int|None=Query(None,ge=1,le=2147483647),
+                  stock_code:str|None=None):
+        return ok(documents.company_page(page,page_size,q,company_id,stock_code))
+
+    @app.get("/api/v1/dashboard")
+    def dashboard(company_id:int|None=Query(None,ge=1,le=2147483647),year:int|None=Query(None,ge=1990,le=2100)):
+        from app.dashboard import Dashboard
+        return ok(Dashboard(documents,evaluations).get(company_id,year))
 
     @app.post("/api/v1/companies")
     def company(payload:CompanyIn):
@@ -317,8 +323,9 @@ def create_app(settings=None):
 
     @app.get("/api/v1/evaluations")
     def evaluation_list(page:int=Query(1,ge=1),page_size:int=Query(20,ge=1,le=200),
-                        stock_code:str|None=None,report_year:int|None=None,status:str|None=None):
-        return ok(evaluations.list(page,page_size,stock_code,report_year,status))
+                        stock_code:str|None=None,report_year:int|None=None,status:str|None=None,
+                        mode:Literal["dual_fixed","dual_agent"]|None=None):
+        return ok(evaluations.list(page,page_size,stock_code,report_year,status,mode))
 
     @app.get("/api/v1/evaluations/{run_id}")
     def evaluation(run_id:str):

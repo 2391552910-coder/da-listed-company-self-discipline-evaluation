@@ -594,7 +594,7 @@ class Evaluations:
         result["model_calls"] = [self._call_public(c) for c in self._calls(run_id)]
         return result
 
-    def list(self, page=1, size=20, stock_code=None, report_year=None, status=None):
+    def list(self, page=1, size=20, stock_code=None, report_year=None, status=None, mode=None):
         _int(page, 1, 1000000, "page")
         _int(size, 1, 200, "page_size")
         where, params = [], []
@@ -610,6 +610,16 @@ class Evaluations:
                 raise DomainError("INVALID_JOB_STATUS", "运行状态不合法", 422)
             where.append("status=?")
             params.append(status)
+        if mode is not None:
+            if not isinstance(mode, str) or mode not in {"dual_fixed", "dual_agent"}:
+                raise DomainError("INVALID_EVALUATION_MODE", "评价模式不合法", 422)
+            # The mode is frozen inside request_json. PostgreSQL and SQLite both
+            # support JSON extraction, with their respective native operators.
+            expression = ("COALESCE(request_json::jsonb->>'mode','dual_fixed')"
+                          if self.docs.db.dialect == "postgresql" else
+                          "COALESCE(json_extract(request_json,'$.mode'),'dual_fixed')")
+            where.append(expression + "=?")
+            params.append(mode)
         condition = " WHERE " + " AND ".join(where) if where else ""
         with self.docs.db.session() as db:
             count = db.one("SELECT COUNT(*) AS n FROM t_evaluation_run" + condition, tuple(params))["n"]

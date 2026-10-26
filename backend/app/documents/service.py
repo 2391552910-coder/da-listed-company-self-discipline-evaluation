@@ -33,6 +33,39 @@ class Documents:
         with self.db.session() as db:
             return db.rows("SELECT id,stock_code,stock_name FROM t_company ORDER BY stock_code")
 
+    def company_page(self, page=1, size=20, q=None, company_id=None, stock_code=None):
+        """Search registered identities; wildcard characters are literal text."""
+        if (type(page) is not int or not 1 <= page <= 1000000 or
+                type(size) is not int or not 1 <= size <= 200):
+            raise DomainError("INVALID_PAGE", "分页参数不合法", 422)
+        if company_id is not None and (type(company_id) is not int or not 1 <= company_id <= 2147483647):
+            raise DomainError("INVALID_COMPANY_ID", "公司编号不合法", 422)
+        if q is not None and (not isinstance(q, str) or len(q) > 128):
+            raise DomainError("INVALID_COMPANY_QUERY", "搜索文本须不超过128个字符", 422)
+        if q is not None:
+            try:
+                q.encode("utf-8")
+            except UnicodeError:
+                raise DomainError("INVALID_COMPANY_QUERY", "搜索文本包含无效字符", 422)
+        where, args = [], []
+        if q is not None and q.strip():
+            # Use an explicit portable escape character for SQLite/PostgreSQL.
+            value = q.strip().replace("!", "!!").replace("%", "!%").replace("_", "!_")
+            where.append("(LOWER(stock_code) LIKE LOWER(?) ESCAPE '!' OR LOWER(stock_name) LIKE LOWER(?) ESCAPE '!')")
+            args.extend(["%" + value + "%"] * 2)
+        if company_id is not None:
+            where.append("id=?")
+            args.append(company_id)
+        if stock_code is not None:
+            where.append("stock_code=?")
+            args.append(code(stock_code))
+        condition = " WHERE " + " AND ".join(where) if where else ""
+        with self.db.session() as db:
+            total = db.one("SELECT COUNT(*) AS n FROM t_company" + condition, args)["n"]
+            rows = db.rows("SELECT id,stock_code,stock_name FROM t_company" + condition +
+                           " ORDER BY stock_code,id LIMIT ? OFFSET ?", (*args, size, (page - 1) * size))
+        return {"items": rows, "total": total, "page": page, "page_size": size}
+
     def upload(self, data, filename, corpus_type, title, company_id=None, report_year=None,
                document_id=None, version_label="1", metadata=None):
         extension = Path(filename).suffix.lower().lstrip(".")

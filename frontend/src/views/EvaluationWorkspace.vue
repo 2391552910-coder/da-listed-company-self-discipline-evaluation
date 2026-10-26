@@ -7,7 +7,7 @@
         <el-card>
           <template #header>新建评价</template>
           <el-form label-position="top" @submit.prevent>
-            <el-form-item label="公司"><el-select data-testid="evaluation-company" class="full" v-model="form.stock_code" filterable placeholder="先在公司管理录入"><el-option v-for="company in companies" :key="company.id" :label="company.stock_code+' '+company.stock_name" :value="company.stock_code" /></el-select></el-form-item>
+            <el-form-item label="公司"><CompanySelect data-testid="evaluation-company" class="full" v-model="form.stock_code" placeholder="查找已登记公司" /></el-form-item>
             <el-form-item label="报告年度"><el-input-number v-model="form.report_year" :min="1990" :max="2100" /></el-form-item>
             <el-form-item label="冻结索引版本"><el-select data-testid="evaluation-index" v-model="form.index_id" class="full" placeholder="选择包含该公司年度的就绪索引"><el-option v-for="index in indexes" :key="index.id" :value="index.id" :disabled="index.status!=='ready'" :label="index.profile+' · '+statusName(index.status)+' · '+short(index.id)" /></el-select></el-form-item>
             <el-alert v-if="!indexes.some(row=>row.status==='ready')" title="暂无就绪索引。请导入年报和法规，解析后构建索引。" type="warning" :closable="false" />
@@ -58,15 +58,23 @@
         </el-card>
       </el-col>
       <el-col :xs="24" :lg="14">
-        <el-card><template #header><span>评价运行记录</span><el-button class="right" :loading="loading" @click="load">刷新</el-button></template>
-          <el-table :data="runs" v-loading="loading" empty-text="尚无评价运行">
+        <el-card><template #header><span>评价运行记录</span><el-button class="right" :loading="runsLoading" @click="loadRuns">刷新</el-button></template>
+          <el-form label-position="top" class="run-filters" @submit.prevent="applyFilters">
+            <el-form-item label="筛选公司"><CompanySelect data-testid="evaluation-filter-company" v-model="runFilters.stock_code" class="full" placeholder="全部公司" /></el-form-item>
+            <el-form-item label="筛选年度"><el-input-number data-testid="evaluation-filter-year" v-model="runFilters.report_year" :min="1990" :max="2100" :precision="0" :controls="false" placeholder="全部年度" class="full" /></el-form-item>
+            <el-form-item label="筛选方法"><el-select data-testid="evaluation-filter-mode" v-model="runFilters.mode" clearable class="full" placeholder="全部方法"><el-option value="dual_fixed" label="固定双源" /><el-option value="dual_agent" label="Agent 扩展" /></el-select></el-form-item>
+            <el-form-item label="筛选状态"><el-select data-testid="evaluation-filter-status" v-model="runFilters.status" clearable class="full" placeholder="全部状态"><el-option v-for="status in runStatuses" :key="status" :value="status" :label="statusName(status)" /></el-select></el-form-item>
+            <div class="actions"><el-button data-testid="evaluation-filter-apply" type="primary" native-type="submit" :loading="runsLoading">查询运行</el-button><el-button @click="resetFilters">重置筛选</el-button></div>
+          </el-form>
+          <el-alert v-if="runsError" class="section" title="评价运行记录读取失败，请检查连接后刷新。" type="warning" :closable="false" />
+          <el-table data-testid="evaluation-run-table" :data="runs" v-loading="runsLoading" empty-text="当前筛选范围内暂无评价运行">
             <el-table-column label="公司／年度" min-width="130"><template #default="{row}">{{ row.stock_code }} · {{ row.report_year }}</template></el-table-column>
             <el-table-column label="运行" min-width="110"><template #default="{row}"><router-link :to="'/evaluations/'+row.id">{{ short(row.id) }}</router-link></template></el-table-column>
             <el-table-column label="状态" min-width="110"><template #default="{row}"><el-tag :type="statusType(row.status)">{{ statusName(row.status) }}</el-tag></template></el-table-column>
             <el-table-column label="方法" min-width="110"><template #default="{row}">{{ modeName(row.mode || row.request?.mode) }}</template></el-table-column>
             <el-table-column label="创建时间（北京时间）" min-width="175"><template #default="{row}">{{ formatDate(row.created_at) }}</template></el-table-column>
           </el-table>
-          <el-pagination class="section" v-model:current-page="page" :total="total" :page-size="10" layout="total, prev, pager, next" @current-change="load" />
+          <el-pagination data-testid="evaluation-run-pagination" class="section" v-model:current-page="page" :total="total" :page-size="10" layout="total, prev, pager, next" />
           <el-button class="section" @click="$router.push('/tasks')">全部任务与重试</el-button>
         </el-card>
       </el-col>
@@ -74,19 +82,22 @@
   </div>
 </template>
 <script setup>
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import request from '../api/request'
 import { formatDate, modeName, short, statusName, statusType } from '../utils/presentation'
 import { newRequestKey } from '../utils/idempotency'
+import CompanySelect from '../components/CompanySelect.vue'
 const route=useRoute(),router=useRouter()
 const form=reactive({index_id:'',stock_code:'',report_year:2024,question_set_version:'four-dim-v1'})
 const retrieval=reactive({annual_top_k:5,regulation_top_k:5,max_reference_tokens:6000,tokenizer_kind:'qwen3',temporal_filter:false,unknown_temporal:'retain'})
 const budget=reactive({max_model_calls:8,max_observed_tokens:80000,max_runtime_seconds:1800,max_output_tokens:8000,request_timeout_seconds:600})
 const mode=ref('dual_fixed'),agent=reactive({max_rounds:1,max_supplemental_calls:4,allow_revision:true})
 const scope=ref('single'),dimension=ref('D1'),question=ref(''),targetDate=ref(null),dateRole=ref('event_date'),model=ref('')
-const companies=ref([]),indexes=ref([]),questionSets=ref([]),profiles=ref([]),runs=ref([]),page=ref(1),total=ref(0),loading=ref(false),submitting=ref(false)
+const indexes=ref([]),questionSets=ref([]),profiles=ref([]),runs=ref([]),page=ref(1),total=ref(0),loading=ref(false),submitting=ref(false)
+const runFilters=reactive({stock_code:'',report_year:null,mode:'',status:''}),appliedFilters=ref({}),runsLoading=ref(false),runsError=ref(false)
+const runStatuses=['queued','running','succeeded','partial','failed','cancelled','budget_exhausted']
 const selectedSet=computed(()=>questionSets.value.find(row=>row.version===form.question_set_version))
 const dimensions=computed(()=>selectedSet.value?.dimensions || [])
 const providerAvailable=computed(()=>profiles.value.some(row=>row.available && row.model===model.value))
@@ -94,12 +105,28 @@ const plannedCalls=computed(()=>(scope.value==='single' ? 1 : selectedSet.value?
 watch(plannedCalls,value=>{if(budget.max_model_calls<value)budget.max_model_calls=value})
 const integer=(value,min,max)=>Number.isInteger(value) && value>=min && value<=max
 const canSubmit=computed(()=>Boolean(form.index_id && form.stock_code && integer(form.report_year,1990,2100) && providerAvailable.value && integer(budget.max_model_calls,plannedCalls.value,40) && integer(budget.max_observed_tokens,1,1000000) && integer(budget.max_output_tokens,128,16000) && integer(budget.request_timeout_seconds,1,600) && integer(budget.max_runtime_seconds,1,7200) && integer(retrieval.max_reference_tokens,1,32000) && integer(retrieval.annual_top_k,1,20) && integer(retrieval.regulation_top_k,1,20) && (mode.value!=='dual_agent' || integer(agent.max_rounds,1,3) && integer(agent.max_supplemental_calls,0,12)) && (scope.value==='single' ? question.value.trim() && dimension.value : selectedSet.value) && (!retrieval.temporal_filter || targetDate.value)))
-let pendingSubmission=null,loadSequence=0
+let pendingSubmission=null,loadSequence=0,runSequence=0,alive=true
 async function load(){
   loading.value=true;const sequence=++loadSequence
-  try { const responses=await Promise.all([request.get('/companies'),request.get('/indexes'),request.get('/question-sets'),request.get('/model-profiles'),request.get('/evaluations',{params:{page:page.value,page_size:10}})]);if(sequence!==loadSequence)return;companies.value=responses[0].data.items;indexes.value=responses[1].data;questionSets.value=responses[2].data.items;profiles.value=responses[3].data.items;runs.value=responses[4].data.items;total.value=responses[4].data.total;if(!model.value)model.value=profiles.value.find(row=>row.available)?.model || '' }
-  finally { if(sequence===loadSequence)loading.value=false }
+  try { const responses=await Promise.all([request.get('/indexes'),request.get('/question-sets'),request.get('/model-profiles')]);if(!alive || sequence!==loadSequence)return;indexes.value=responses[0].data;questionSets.value=responses[1].data.items;profiles.value=responses[2].data.items;if(!model.value)model.value=profiles.value.find(row=>row.available)?.model || '' }
+  finally { if(alive && sequence===loadSequence)loading.value=false }
 }
+async function loadRuns(){
+  runsLoading.value=true;runsError.value=false;const sequence=++runSequence
+  try{
+    const response=await request.get('/evaluations',{params:{...appliedFilters.value,page:page.value,page_size:10}})
+    if(!alive || sequence!==runSequence)return
+    runs.value=response.data.items;total.value=response.data.total
+  }catch{if(alive && sequence===runSequence){runs.value=[];total.value=0;runsError.value=true}}
+  finally{if(alive && sequence===runSequence)runsLoading.value=false}
+}
+function applyFilters(){
+  if(runFilters.report_year!==null && runFilters.report_year!==undefined && !integer(runFilters.report_year,1990,2100)){ElMessage.warning('筛选年度须为1990至2100的整数，或留空');return}
+  appliedFilters.value=Object.fromEntries(Object.entries(runFilters).filter(([,value])=>value!=='' && value!==null && value!==undefined))
+  if(page.value===1)loadRuns();else page.value=1
+}
+function resetFilters(){Object.assign(runFilters,{stock_code:'',report_year:null,mode:'',status:''});applyFilters()}
+watch(page,loadRuns)
 async function submit(){
   if(!canSubmit.value)return
   let questions=null
@@ -112,5 +139,10 @@ async function submit(){
   try { const response=await request.post('/evaluations',payload,{headers:{'Idempotency-Key':pendingSubmission.key}});pendingSubmission=null;ElMessage.success('评价任务已创建');await router.push('/evaluations/'+response.data.run_id) }
   finally { submitting.value=false }
 }
-onMounted(async()=>{if(typeof route.query.stock_code==='string')form.stock_code=route.query.stock_code;if(typeof route.query.index_id==='string')form.index_id=route.query.index_id;const year=Number(route.query.report_year);if(Number.isInteger(year) && year>=1990 && year<=2100)form.report_year=year;await load()})
+onMounted(async()=>{if(typeof route.query.stock_code==='string')form.stock_code=route.query.stock_code;if(typeof route.query.index_id==='string')form.index_id=route.query.index_id;const year=Number(route.query.report_year);if(Number.isInteger(year) && year>=1990 && year<=2100)form.report_year=year;await Promise.all([load(),loadRuns()])})
+onUnmounted(()=>{alive=false;loadSequence++;runSequence++})
 </script>
+
+<style scoped>
+.run-filters{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 14px}.run-filters>.actions{grid-column:1/-1;margin-bottom:16px}@media(max-width:550px){.run-filters{grid-template-columns:1fr}}
+</style>
