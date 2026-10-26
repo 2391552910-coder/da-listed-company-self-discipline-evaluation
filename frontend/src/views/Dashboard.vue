@@ -1,58 +1,27 @@
 <template>
   <div>
-    <h2>总览看板</h2>
-    <el-row :gutter="16">
-      <el-col :span="6"><el-card><div class="stat">{{ stats.companyCount }}</div><div>覆盖公司</div></el-card></el-col>
-      <el-col :span="6"><el-card><div class="stat">{{ stats.levelA }}</div><div>A 级（自律优秀）</div></el-card></el-col>
-      <el-col :span="6"><el-card><div class="stat">{{ stats.levelCD }}</div><div>C/D 级（重点关注）</div></el-card></el-col>
-      <el-col :span="6"><el-card><div class="stat">{{ stats.avgScore }}</div><div>平均指数得分</div></el-card></el-col>
+    <h2>主体自律评价研究工作台</h2>
+    <el-alert title="当前已提供阶段2文档与检索入口；第三章指数和生成评价尚未接入。" type="info" :closable="false" />
+    <el-row :gutter="20" style="margin-top:24px">
+      <el-col :span="8"><el-card><h3>{{ companyCount }}</h3><p>已录入公司</p></el-card></el-col>
+      <el-col :span="8"><el-card><h3>{{ documentCount }}</h3><p>已登记文档</p></el-card></el-col>
+      <el-col :span="8"><el-card><h3>{{ readyIndexes }}</h3><p>就绪索引版本</p></el-card></el-col>
     </el-row>
-    <el-row :gutter="16" style="margin-top: 16px">
-      <el-col :span="12"><el-card title="四维度平均得分"><div ref="radar" style="height: 360px"></div></el-card></el-col>
-      <el-col :span="12"><el-card title="等级分布"><div ref="pie" style="height: 360px"></div></el-card></el-col>
-    </el-row>
+    <el-card style="margin-top:24px">
+      <p>先登记公司并导入年报与法规，再解析、选择批次构建索引，最后分别检索两类证据并核对原文。</p>
+      <el-button type="primary" @click="$router.push('/documents')">进入双源文档中心</el-button>
+      <p style="color:#64748b">指数结果未接入。这里暂不显示指数雷达图或等级分布。</p>
+    </el-card>
   </div>
 </template>
-
 <script setup>
-import { onMounted, reactive, ref } from 'vue'
-import * as echarts from 'echarts'
-import { listCompanies } from '../api'
-
-const radar = ref(null)
-const pie = ref(null)
-const stats = reactive({ companyCount: 0, levelA: 0, levelCD: 0, avgScore: '-' })
-
-onMounted(async () => {
-  const resp = await listCompanies({ size: 200 })
-  const items = resp.data.items || []
-  stats.companyCount = items.length
-  // 演示数据：实际由指数计算结果驱动
-  const radarChart = echarts.init(radar.value)
-  radarChart.setOption({
-    radar: {
-      indicator: [
-        { name: '信息披露质量', max: 100 },
-        { name: '董事会治理', max: 100 },
-        { name: '内控合规', max: 100 },
-        { name: '第三方声誉', max: 100 },
-      ],
-    },
-    series: [{ type: 'radar', data: [{ value: [82, 76, 88, 71], name: '四维度平均得分' }] }],
-  })
-  const pieChart = echarts.init(pie.value)
-  pieChart.setOption({
-    series: [{
-      type: 'pie',
-      data: [
-        { value: 30, name: 'A 级' }, { value: 45, name: 'B 级' },
-        { value: 18, name: 'C 级' }, { value: 7, name: 'D 级' },
-      ],
-    }],
-  })
+import { ref, onMounted } from 'vue'
+import request from '../api/request'
+const companyCount=ref('—'),documentCount=ref('—'),readyIndexes=ref('—')
+onMounted(async()=>{
+  const [companies,documents,indexes]=await Promise.all([request.get('/companies'),request.get('/documents'),request.get('/indexes')])
+  companyCount.value=companies.data.total
+  documentCount.value=documents.data.total
+  readyIndexes.value=indexes.data.filter(row=>row.status==='ready').length
 })
 </script>
-
-<style scoped>
-.stat { font-size: 32px; font-weight: bold; color: #409eff; }
-</style>

@@ -6,11 +6,11 @@
         <div class="logo">主体自律评价系统</div>
         <el-menu-item index="/">总览看板</el-menu-item>
         <el-menu-item index="/companies">公司管理</el-menu-item>
-        <el-menu-item index="/import">数据与年报导入</el-menu-item>
-        <el-menu-item index="/index">自律指数</el-menu-item>
-        <el-menu-item index="/evaluation">大模型评价</el-menu-item>
-        <el-menu-item index="/evidence">法规检索与证据</el-menu-item>
-        <el-menu-item index="/report">报告导出</el-menu-item>
+        <el-menu-item index="/documents">双源文档中心</el-menu-item>
+        <el-menu-item index="/index" disabled>自律指数</el-menu-item>
+        <el-menu-item index="/evaluation" disabled>大模型评价</el-menu-item>
+        <el-menu-item index="/evidence" disabled>法规检索与证据</el-menu-item>
+        <el-menu-item index="/report" disabled>报告导出</el-menu-item>
       </el-menu>
     </el-aside>
     <el-main>

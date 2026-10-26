@@ -1,0 +1,6 @@
+# Install in a separate GPU environment with the appropriate CUDA PyTorch build.
+# Existing validated Windows profile uses torch 2.7.1+cu126.
+numpy==1.26.4
+sentence-transformers==3.1.1
+transformers==4.51.3
+jieba==0.42.1

@@ -1,0 +1,49 @@
+# Default container profile: web + PostgreSQL + BM25 diagnostics.
+# For CUDA, run API and Worker in the native GPU environment described in docs/stage2.
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      POSTGRES_DB: self_discipline
+    ports: ["127.0.0.1:5432:5432"]
+    volumes: ["stage2_pg:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL","pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+  migrate:
+    build: ./backend
+    environment: &environment
+      APP_DATABASE_URL: postgresql+psycopg://postgres:${POSTGRES_PASSWORD}@postgres:5432/self_discipline
+      APP_DATA_ROOT: /data
+    volumes: ["stage2_assets:/data"]
+    command: ["python","-m","alembic","-c","alembic.ini","upgrade","head"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+  backend:
+    build: ./backend
+    environment: *environment
+    volumes: ["stage2_assets:/data"]
+    ports: ["127.0.0.1:8000:8000"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+  worker:
+    build: ./backend
+    environment: *environment
+    volumes: ["stage2_assets:/data"]
+    command: ["python","-m","app.documents.cli","worker"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+  frontend:
+    build: ./frontend
+    ports: ["127.0.0.1:8080:80"]
+    depends_on: ["backend"]
+volumes:
+  stage2_pg:
+  stage2_assets:
