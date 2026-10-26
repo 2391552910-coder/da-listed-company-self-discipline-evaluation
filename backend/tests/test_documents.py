@@ -125,6 +125,7 @@ def test_scope_and_index_integrity(docs,monkeypatch):
     job=work_once(docs)
     assert job["status"]=="succeeded",job
     iid=job["result"]["index_id"]
+    assert indexes.build({"index_id":iid})["recovered_ready_index"]
     result=indexes.search(iid,"审计委员会","000001",2024,2)
     assert result["annual_report"] and result["regulation"] and result["warning"]
     for hit in result["annual_report"]+result["regulation"]:
@@ -153,3 +154,18 @@ def test_frame_tamper_blocked(docs):
         db.execute("UPDATE t_text_frame SET text='tampered' WHERE id=?",(chunk["frame_id"],))
     with pytest.raises(DomainError):
         docs.source(chunk["id"])
+
+
+def test_lease_recovery_is_limited(docs):
+    version=text_version(docs)
+    task=docs.enqueue_parse(version["id"])
+    with docs.db.session() as db:
+        db.execute("UPDATE t_job SET status='running',lease_until='2000-01-01',attempt_count=3 WHERE id=?",(task["id"],))
+    assert work_once(docs) is None
+    assert docs.job(task["id"])["error_code"]=="WORKER_ATTEMPTS_EXHAUSTED"
+
+def test_unsupported_single_corpus_index_marks_failed(docs):
+    law,parsed=parsed_law(docs)
+    Indexes(docs).enqueue([parsed["parse_id"]],"bm25_diagnostic")
+    assert work_once(docs)["status"]=="failed"
+    assert Indexes(docs).list()[0]["status"]=="failed"

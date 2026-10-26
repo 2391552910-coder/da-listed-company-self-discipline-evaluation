@@ -1,0 +1,25 @@
+{
+  "schema_version": "stage2-test-summary-v1",
+  "local": {
+    "passed": 21,
+    "skipped": 2,
+    "errors": 0,
+    "failures": 0
+  },
+  "skipped_reasons": [
+    "FastAPI/multipart unavailable locally",
+    "Disposable PostgreSQL unavailable locally"
+  ],
+  "ci": {
+    "first_verified_commit": "db61a5788fde4c886aa8cd028c15f58aaacb6ca8",
+    "run_id": 40283503812,
+    "conclusion": "success",
+    "verified": [
+      "PostgreSQL migration",
+      "real HTTP adapter test",
+      "PostgreSQL persistence test",
+      "frontend production build"
+    ]
+  },
+  "runtime_validation": "real-validation.json"
+}

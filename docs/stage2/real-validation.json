@@ -1,0 +1,126 @@
+{
+  "schema_version": "stage2-real-source-validation-v1",
+  "executed_at_utc": "2026-10-26T07:01:42.047205+00:00",
+  "database_profile": "sqlite_diagnostic",
+  "retrieval_profile": "qwen_cuda",
+  "generation_api_calls": 0,
+  "documents": [
+    {
+      "role": "annual_report",
+      "file_sha256": "e34eb13835855354f5557f305a5e54d8c910bc9e74ed9ca29f52c2a5ebeb9b04",
+      "parse": {
+        "chunk_count": 294,
+        "frame_count": 206,
+        "parse_id": "9e3fc8b4-c3b5-4045-be32-6dfa829a9807",
+        "parser": {
+          "annual_identity": "opening_identity_matched",
+          "name": "PyMuPDF",
+          "page_count": 206,
+          "version": "1.28.2"
+        },
+        "status": "done",
+        "warnings": []
+      }
+    },
+    {
+      "role": "regulation",
+      "file_sha256": "19a609a9a19110d61215f426d1500a9f9b20a69639d68848ab2295ba69b3d941",
+      "parse": {
+        "chunk_count": 22,
+        "frame_count": 22,
+        "parse_id": "aa665478-f17f-4e5a-811a-98925607efb7",
+        "parser": {
+          "name": "PyMuPDF",
+          "page_count": 22,
+          "version": "1.28.2"
+        },
+        "status": "done",
+        "warnings": []
+      }
+    }
+  ],
+  "index": {
+    "chunk_count": 316,
+    "encoder_identity": {
+      "backend": "qwen",
+      "batch_size": 1,
+      "device": "cuda:0",
+      "document_prompt": "",
+      "max_seq_length": 2048,
+      "model_dtype": "torch.float16",
+      "model_name": "Qwen/Qwen3-Embedding-0.6B",
+      "model_revision": "97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3",
+      "normalize_embeddings": true,
+      "query_prompt": "Instruct: Given a web search query, retrieve relevant passages that answer the query\nQuery:",
+      "query_prompt_sha256": "9fab7feb99edb69f560d85cf1bb849dd556c37f383d0336574f78f1303e90740",
+      "requested_dtype": "float16",
+      "requested_revision": "97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3",
+      "resolved_revision": "97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3"
+    },
+    "index_id": "1c4f2ca9-f875-4973-acc8-ddd7383a571c",
+    "manifest_sha256": "7665cb28b37aa6c1dd67a085d1c841d55ea62d551f9e7142238ee27fcc547715",
+    "profile": "qwen_cuda"
+  },
+  "research_parity": {
+    "matched": true,
+    "pools_compared": 2,
+    "shared_frozen_encoder": true
+  },
+  "query_elapsed_seconds": 55.343,
+  "locator_checks": [
+    {
+      "role": "annual_report",
+      "physical_page": 30,
+      "file_sha256": "e34eb13835855354f5557f305a5e54d8c910bc9e74ed9ca29f52c2a5ebeb9b04",
+      "frame_sha256": "83f34eacbf7f38ce06ce15e1e44f55fa47b44851ed26961b59ba901a839bd9f8",
+      "chunk_sha256": "83f34eacbf7f38ce06ce15e1e44f55fa47b44851ed26961b59ba901a839bd9f8",
+      "locator_verified": true
+    },
+    {
+      "role": "annual_report",
+      "physical_page": 74,
+      "file_sha256": "e34eb13835855354f5557f305a5e54d8c910bc9e74ed9ca29f52c2a5ebeb9b04",
+      "frame_sha256": "d3db1ddd6aa66d957dbda1f7d071728fd52c47c0577c663f75c740b1cd9cced9",
+      "chunk_sha256": "d3db1ddd6aa66d957dbda1f7d071728fd52c47c0577c663f75c740b1cd9cced9",
+      "locator_verified": true
+    },
+    {
+      "role": "annual_report",
+      "physical_page": 43,
+      "file_sha256": "e34eb13835855354f5557f305a5e54d8c910bc9e74ed9ca29f52c2a5ebeb9b04",
+      "frame_sha256": "e1ce8cb53a2ee6deb2b53f20443124036850be04f291f61ae395696ca7a8c5b6",
+      "chunk_sha256": "e1ce8cb53a2ee6deb2b53f20443124036850be04f291f61ae395696ca7a8c5b6",
+      "locator_verified": true
+    },
+    {
+      "role": "regulation",
+      "physical_page": 15,
+      "file_sha256": "19a609a9a19110d61215f426d1500a9f9b20a69639d68848ab2295ba69b3d941",
+      "frame_sha256": "53e04e6d98ff9f0b906bcd6620228cb024727c9e83c9e57c2ba61c66843af6df",
+      "chunk_sha256": "53e04e6d98ff9f0b906bcd6620228cb024727c9e83c9e57c2ba61c66843af6df",
+      "locator_verified": true
+    },
+    {
+      "role": "regulation",
+      "physical_page": 13,
+      "file_sha256": "19a609a9a19110d61215f426d1500a9f9b20a69639d68848ab2295ba69b3d941",
+      "frame_sha256": "558edd1a9d25ad2e205e43ca0d4ce4270fe99ef436eb286fb0a458da31000600",
+      "chunk_sha256": "558edd1a9d25ad2e205e43ca0d4ce4270fe99ef436eb286fb0a458da31000600",
+      "locator_verified": true
+    },
+    {
+      "role": "regulation",
+      "physical_page": 2,
+      "file_sha256": "19a609a9a19110d61215f426d1500a9f9b20a69639d68848ab2295ba69b3d941",
+      "frame_sha256": "2c6732e05553b4296e7b41fd438d702e855b91e2296c80d39afb490cfac23926",
+      "chunk_sha256": "2c6732e05553b4296e7b41fd438d702e855b91e2296c80d39afb490cfac23926",
+      "locator_verified": true
+    }
+  ],
+  "status": "passed",
+  "not_verified": [
+    "PostgreSQL runtime",
+    "FastAPI runtime",
+    "frontend production build"
+  ]
+}

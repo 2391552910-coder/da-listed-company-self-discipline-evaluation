@@ -93,6 +93,12 @@ class Indexes:
 
     def build(self, payload, heartbeat=None):
         index_id=payload["index_id"]
+        with self.docs.db.session() as db:
+            existing=required(db.one("SELECT status FROM t_index_version WHERE id=?",(index_id,)))
+        if existing["status"]=="ready":
+            _,manifest,dataset,_=self.validate(index_id)
+            return {"index_id":index_id,"profile":manifest["profile"],"chunk_count":len(dataset["rows"]),
+                    "encoder_identity":manifest["encoder_identity"],"recovered_ready_index":True}
         base=f"indexes/{index_id}"
         directory=self.docs.storage.path(base)
         directory.mkdir(parents=True,exist_ok=True)
@@ -165,7 +171,7 @@ class Indexes:
                     raise DomainError("RETRIEVAL_SCOPE_VIOLATION","检索结果越过指定作用域",409)
                 hit.update(content=row["content"],title=row["title"],version_id=row["version_id"],
                            physical_page=row["physical_page"],char_start=row["char_start"],char_end=row["char_end"],
-                           source_format=row["source_format"],parse_warnings=json.loads(row["parse_warnings_json"]),source_url=f"/api/v1/chunks/{row['id']}/source")
+                           source_format=row["source_format"],parse_warnings=json.loads(row.get("parse_warnings_json","[]")),source_url=f"/api/v1/chunks/{row['id']}/source")
         result.update(index_id=index_id,profile=index["profile"],manifest_sha256=index["manifest_sha256"],
                       warning="仅诊断BM25，未使用稠密模型" if index["profile"]=="bm25_diagnostic" else None)
         return result

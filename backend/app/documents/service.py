@@ -42,6 +42,8 @@ class Documents:
             raise DomainError("UNSUPPORTED_FORMAT", "仅支持PDF/TXT/DOCX及年报/法规来源", 422)
         if corpus_type == "annual_report" and (extension != "pdf" or not company_id or not report_year):
             raise DomainError("ANNUAL_METADATA_REQUIRED", "年报需PDF文件、公司及年度", 422)
+        if corpus_type == "annual_report" and (not isinstance(report_year,int) or not 1990 <= report_year <= 2100):
+            raise DomainError("INVALID_REPORT_YEAR","报告年度不合法",422)
         if extension == "pdf" and not data[:1024].lstrip().startswith(b"%PDF-"):
             raise DomainError("INVALID_PDF", "文件内容不是PDF", 422)
         if corpus_type == "regulation" and (company_id is not None or report_year is not None):
