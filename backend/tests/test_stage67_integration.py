@@ -153,6 +153,12 @@ def test_postgres_agent_steps_experiment_binding_and_rating_provenance(tmp_path,
     completed=experiments.get(created["id"])
     assert completed["status"]=="succeeded"
     assert completed["comparison"]["groups"][0]["comparable"]
+    fixed_page=service.list(stock_code="019996",report_year=2024,status="succeeded",mode="dual_fixed",size=1)
+    agent_page=service.list(stock_code="019996",report_year=2024,status="succeeded",mode="dual_agent",size=1)
+    assert fixed_page["total"] == agent_page["total"] == 1
+    assert fixed_page["items"][0]["mode"] == "dual_fixed"
+    assert agent_page["items"][0]["mode"] == "dual_agent"
+    assert fixed_page["items"][0]["id"] != agent_page["items"][0]["id"]
     agent=next(item for item in completed["items"] if item["mode"]=="dual_agent")
     run=service.get(agent["run_id"])
     assert [call["step_key"] for call in run["model_calls"]]==["plan:1","draft","verify"]

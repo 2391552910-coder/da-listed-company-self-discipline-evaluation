@@ -40,3 +40,6 @@
 ## 阶段7 部署与交付
 
 [双环境启动、持久化、备份恢复与交付检查](stage7/README.md) · [最终测试摘要](stage7/test-summary.json) · [PG恢复验证](stage7/postgres-backup-validation.json)
+
+
+- [系统设计完成度核查与功能补齐](completion/README.md)：总览、公司分页、文档筛选/片段分页、评价方法筛选；包含剩余研究验收边界。
