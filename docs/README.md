@@ -1,6 +1,6 @@
 # 项目设计文档
 
-更新日期：2026-10-26（北京时间）。阶段 1 和阶段 2 已完成；生成评价等后续阶段尚未实施。
+更新日期：2026-10-26（北京时间）。阶段 1 至阶段 3 已完成；生成评价等后续阶段尚未实施。
 
 | 文档 | 用途 |
 | --- | --- |
@@ -20,3 +20,7 @@
 ## 阶段 2 实现与验证
 
 [使用说明、设计细化和验证边界](stage2/README.md) · [真实CUDA验证](stage2/real-validation.json) · [测试摘要](stage2/test-summary.json)
+
+## 阶段 3 上下文与任务
+
+[功能、API、迁移与运行说明](stage3/README.md) · [真实 CUDA 与预算回放](stage3/real-validation.json) · [测试摘要](stage3/test-summary.json)

@@ -1,4 +1,4 @@
-name: Stage2 document services
+name: Document and context services
 on:
   push:
     branches: [main, "feat/**"]
@@ -21,6 +21,7 @@ jobs:
           --health-retries 10
     env:
       APP_DATABASE_URL: postgresql+psycopg://postgres:ci-only@localhost:5432/dalun_ci
+      TEST_LEGACY_SEED: "1"
       TEST_POSTGRES_URL: postgresql+psycopg://postgres:ci-only@localhost:5432/dalun_ci
     steps:
       - uses: actions/checkout@v4
@@ -31,9 +32,13 @@ jobs:
           cache-dependency-path: backend/requirements-*.txt
       - run: python -m pip install -r requirements-test.txt
         working-directory: backend
+      - run: python -m alembic -c alembic.ini upgrade 0001_documents
+        working-directory: backend
+      - run: python -m app.documents.cli company 019998 MigrationFixture
+        working-directory: backend
       - run: python -m alembic -c alembic.ini upgrade head
         working-directory: backend
-      - run: python -m pytest tests -q --junitxml=../test-results/stage2.xml
+      - run: python -m pytest tests -q --junitxml=../test-results/stage3.xml
         working-directory: backend
       - uses: actions/setup-node@v4
         with:
@@ -45,5 +50,5 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: stage2-test-results
+          name: stage3-test-results
           path: test-results/

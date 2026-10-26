@@ -1,0 +1,23 @@
+{
+  "schema_version": "stage3-test-summary-v1",
+  "local": {
+    "last_full_passed": 159,
+    "last_full_skipped": 3,
+    "targeted_checks_passed": 5,
+    "note": "Targeted checks include overlapping cases; counts are not additive"
+  },
+  "ci": {
+    "run_id": 40291767626,
+    "job_id": 121468252801,
+    "commit": "abdfc78a1c4a5b3ef96f4080c98c490598928c07",
+    "passed": 166,
+    "conclusion": "success",
+    "url": "https://github.com/2391552910-coder/da-listed-company-self-discipline-evaluation/actions/runs/40291767626"
+  },
+  "real_validation": "real-validation.json",
+  "boundaries": [
+    "Evidence-context budget uses frozen reference tokenizer, not provider billing tokenizer",
+    "No generation API calls",
+    "Full server deployment and browser interaction not verified"
+  ]
+}

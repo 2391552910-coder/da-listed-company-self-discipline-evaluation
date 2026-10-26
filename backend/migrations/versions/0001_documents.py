@@ -1,6 +1,6 @@
 """Add stage2 tables without deleting or fabricating legacy provenance."""
 from alembic import op
-from app.documents.database import schema_statements
+from app.documents.schema_v2 import schema_statements
 
 revision="0001_documents"
 down_revision=None

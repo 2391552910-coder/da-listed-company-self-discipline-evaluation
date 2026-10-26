@@ -16,3 +16,6 @@ backend/.test-runtime*/
 backend/backend/
 test-results/
 .pytest_cache/
+
+# Isolated stage3 pytest sandboxes
+backend/.t*/

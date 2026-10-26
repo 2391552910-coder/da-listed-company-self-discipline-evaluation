@@ -1,29 +1,40 @@
 import json
 import time
-from app.documents.common import DomainError, uid
+from app.documents.common import DomainError,dump,now,uid
 from app.documents.indexes import Indexes
+from app.documents.jobs import JobControl
 
 def work_once(documents):
     worker_id=uid()
     job=documents.claim_job(worker_id)
     if not job:
         return None
-    heartbeat=lambda:documents.heartbeat(job["id"],worker_id)
+    jobs=JobControl(documents)
+    heartbeat=lambda:jobs.checkpoint(job["id"],worker_id)
     try:
+        heartbeat()
         payload=json.loads(job["payload_json"])
         if job["kind"]=="parse":
-            result=documents.parse(payload["version_id"],payload["config"])
+            result=documents.parse(payload["version_id"],payload["config"],heartbeat,job["id"],worker_id)
         elif job["kind"]=="index":
-            result=Indexes(documents).build(payload,heartbeat)
+            result=Indexes(documents).build(payload,heartbeat,job["id"],worker_id)
+        elif job["kind"]=="context":
+            from app.retrieval.service import Contexts
+            result=Contexts(documents).build(payload,job["id"],worker_id,heartbeat)
         else:
             raise DomainError("UNKNOWN_JOB_KIND","未知任务类型")
-        documents.finish(job["id"],worker_id,result=result)
+        heartbeat()
+        jobs.finish(job["id"],worker_id,result=result,
+                    status=result.get("status") if result.get("status") in {"budget_exhausted","partial"} else None,
+                    error=result.get("error_code"))
     except Exception as error:
-        if job["kind"]=="index":
-            with documents.db.session() as db:
-                db.execute("UPDATE t_index_version SET status='failed' WHERE id=? AND status!='ready'",
-                           (json.loads(job["payload_json"])["index_id"],))
-        documents.finish(job["id"],worker_id,error=error.code if isinstance(error,DomainError) else "TASK_FAILED")
+        if isinstance(error,DomainError) and error.code=="LEASE_LOST":
+            return documents.job(job["id"])
+        try:
+            jobs.finish(job["id"],worker_id,error=error.code if isinstance(error,DomainError) else "TASK_FAILED")
+        except DomainError as failure:
+            if failure.code!="LEASE_LOST":
+                raise
     return documents.job(job["id"])
 
 def run(documents,once=False):

@@ -11,6 +11,8 @@ class Settings:
     model_python: str
     max_upload_bytes: int = 100 * 1024 * 1024
     model_timeout: int = 3600
+    reference_tokenizer_file: str | None = None
+    reference_tokenizer_sha256: str | None = None
 
     @classmethod
     def from_env(cls):
@@ -25,4 +27,6 @@ class Settings:
             os.getenv("MODEL_PYTHON", "python"),
             int(os.getenv("MAX_UPLOAD_BYTES", str(100 * 1024 * 1024))),
             int(os.getenv("MODEL_TIMEOUT_SECONDS", "3600")),
+            os.getenv("REFERENCE_TOKENIZER_FILE"),
+            os.getenv("REFERENCE_TOKENIZER_SHA256"),
         )

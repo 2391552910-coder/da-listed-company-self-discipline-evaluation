@@ -62,6 +62,12 @@ def query(directory,request_file,response_file,reference_root=None):
     dataset,_=read_dataset(directory,manifest)
     request=json.loads(Path(request_file).read_bytes())
     chunks=chunks_from(dataset["rows"])
+    from app.retrieval.temporal import select_regulations
+    selected_regulations,temporal_audit=select_regulations(
+        [r for r in dataset["rows"] if r["corpus_type"]=="regulation"],
+        temporal_filter=request.get("temporal_filter",False),target_date=request.get("target_date"),
+        target_date_role=request.get("target_date_role"),unknown_policy=request.get("unknown_temporal","retain"))
+    eligible_regulation_ids={r["id"] for r in selected_regulations}
     retriever=None
     if manifest["profile"]=="qwen_cuda":
         import numpy as np
@@ -85,10 +91,10 @@ def query(directory,request_file,response_file,reference_root=None):
         retriever=BM25Retriever(chunks)
     pools={"annual_report":[c for c in chunks if c.meta["corpus_type"]=="annual_report" and
                            c.meta["stock_code"]==request["stock_code"] and c.meta["report_year"]==request["report_year"]],
-           "regulation":[c for c in chunks if c.meta["corpus_type"]=="regulation"]}
+           "regulation":[c for c in chunks if c.meta["corpus_type"]=="regulation" and c.chunk_id in eligible_regulation_ids]}
     if not pools["annual_report"]:
         raise ValueError("Empty annual scope")
-    result={"annual_report":[],"regulation":[],"traces":{}}
+    result={"annual_report":[],"regulation":[],"traces":{},"temporal_filter_audit":temporal_audit}
     original=None
     if reference_root:
         sys.path.insert(0,str(Path(reference_root).resolve()))
@@ -101,18 +107,19 @@ def query(directory,request_file,response_file,reference_root=None):
             original.bm25=OriginalBM25(chunks)
     parity=[]
     for role,pool in pools.items():
-        if not pool:
-            hits=[]
-        elif manifest["profile"]=="qwen_cuda":
+        top_k=request.get("annual_top_k" if role=="annual_report" else "regulation_top_k",request["top_k"])
+        if manifest["profile"]=="qwen_cuda":
             from app.research_adapter.vendor.retrieval.search_trace import SearchTrace
-            trace=SearchTrace(request["query"],request["top_k"],[c.chunk_id for c in pool],"dual_scoped_hybrid")
-            hits=retriever.search(request["query"],request["top_k"],pool=pool,trace=trace)
+            trace=SearchTrace(request["query"],top_k,[c.chunk_id for c in pool],"dual_scoped_hybrid")
+            hits=retriever.search(request["query"],top_k,pool=pool,trace=trace)
             result["traces"][role]=trace.data
             if original:
-                control=original.search(request["query"],request["top_k"],pool=pool)
+                control=original.search(request["query"],top_k,pool=pool)
                 parity.append([(c.chunk_id,float(s)) for c,s in hits]==[(c.chunk_id,float(s)) for c,s in control])
         else:
-            hits=retriever.search(request["query"],request["top_k"],candidate_ids={c.chunk_id for c in pool})
+            hits=retriever.search(request["query"],top_k,candidate_ids={c.chunk_id for c in pool})
+            result["traces"][role]={"eligible_pool_count":len(pool),"final_rankings":[
+                {"chunk_id":c.chunk_id,"score":float(s)} for c,s in hits],"profile":"bm25_diagnostic"}
         result[role]=[{"chunk_id":c.chunk_id,"score":float(s)} for c,s in hits]
     result["elapsed_seconds"]=round(time.monotonic()-started,3)
     result["research_parity"]={"matched":all(parity),"pools_compared":len(parity),"shared_frozen_encoder":True} if parity else None

@@ -22,7 +22,7 @@ class Storage:
             if path.read_bytes() != data:
                 raise DomainError("IMMUTABLE_CONFLICT", "不可变文件已存在", 409)
             return
-        temporary = path.with_name(path.name + "." + uid() + ".tmp")
+        temporary = path.with_name(uid() + ".tmp")
         try:
             temporary.write_bytes(data)
             # Never replace a different immutable object.
