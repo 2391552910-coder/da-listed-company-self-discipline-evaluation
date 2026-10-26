@@ -1,0 +1,1 @@
+<template><div class="page-shell"><el-result icon="info" title="页面不存在" sub-title="请从工作总览选择需要的功能"><template #extra><el-button type="primary" @click="$router.push('/')">返回总览</el-button></template></el-result></div></template>

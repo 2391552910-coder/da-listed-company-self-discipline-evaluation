@@ -1,7 +1,7 @@
 <template>
   <div class="documents">
-    <h2>双源文档中心</h2>
-    <el-alert title="阶段 2：导入、解析、索引与原文定位。生成评价与第三章指数尚待接入。" type="info" :closable="false" />
+    <div class="page-heading"><h2>双源文档中心</h2><div class="actions"><el-button @click="goEvaluate">进入评价工作台</el-button><el-button @click="$router.push('/tasks')">任务中心</el-button></div></div>
+    <el-alert title="导入完整年报与法规、保留版本并核对原文位置。索引就绪后可进入单题或四维评价。" type="info" :closable="false" />
     <el-row :gutter="20" class="section">
       <el-col :xs="24" :lg="10">
         <el-card>
@@ -78,7 +78,7 @@
       <template v-if="source">
         <el-alert :title="source.source_available ? '原文件完整性与文本帧区间校验通过；未认证语义支持或法规适用性。' : '原文件不可用，正在显示历史文本快照。'" :type="source.source_available ? 'info' : 'warning'" :closable="false" />
         <p>{{ source.title }} · {{ source.physical_page ? '物理第'+source.physical_page+'页' : '正文字符区间' }} · [{{ source.char_start }}, {{ source.char_end }})</p>
-        <p class="muted">来源：{{ source.text_origin }} · {{ source.metadata.identity_status }} · {{ source.metadata.applicability_status }}</p>
+        <p class="muted">来源：{{ source.text_origin }} · {{ source.metadata?.identity_status }} · {{ source.metadata?.applicability_status }}</p>
         <a v-if="source.source_available" :href="fileUrl(source.version_id) + (source.physical_page ? '#page='+source.physical_page : '')" target="_blank" rel="noopener">打开原件对应页</a>
         <pre class="frame">{{ source.frame_text.slice(0,source.char_start) }}<mark>{{ source.content }}</mark>{{ source.frame_text.slice(source.char_end) }}</pre>
       </template>
@@ -88,7 +88,9 @@
 <script setup>
 import { ref, reactive, onMounted, onUnmounted } from 'vue'
 import { ElMessage } from 'element-plus'
+import { useRoute, useRouter } from 'vue-router'
 import request from '../api/request'
+const route=useRoute(),router=useRouter()
 const form = reactive({ corpus_type:'annual_report', title:'', company_id:null, report_year:2023, document_id:'', version_label:'1' })
 const metadata=ref('{}'), file=ref(null), companies=ref([]), documents=ref([]), versions=ref([]), indexes=ref([])
 const selectedParses=ref([]), indexId=ref(''), profile=ref('qwen_cuda'), page=ref(1), total=ref(0)
@@ -115,7 +117,8 @@ async function search(){searching.value=true;try{results.value=(await request.po
 async function showSource(id){source.value=(await request.get('/chunks/'+id+'/source')).data;sourceOpen.value=true}
 let timer=null
 async function poll(){try{let changed=false;for(let i=0;i<jobs.value.length;i++){if(['queued','running'].includes(jobs.value[i].status)){const updated=(await request.get('/jobs/'+jobs.value[i].id)).data;changed ||= updated.status!==jobs.value[i].status;jobs.value[i]=updated}}if(changed){await loadDocuments();if(activeDocument.value)await selectDocument({id:activeDocument.value})}}finally{timer=setTimeout(poll,3000)}}
-onMounted(async()=>{await Promise.all([loadCompanies(),loadDocuments()]);poll()})
+function goEvaluate(){router.push({path:'/evaluations/new',query:{report_year:year.value,...(indexId.value ? {index_id:indexId.value} : {}),...(stockCode.value ? {stock_code:stockCode.value} : {})}})}
+onMounted(async()=>{if(route.query.company_id)form.company_id=Number(route.query.company_id);if(typeof route.query.stock_code==='string')stockCode.value=route.query.stock_code;await Promise.all([loadCompanies(),loadDocuments()]);poll()})
 onUnmounted(()=>clearTimeout(timer))
 </script>
 <style scoped>

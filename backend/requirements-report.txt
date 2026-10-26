@@ -1,0 +1,3 @@
+# Reports use the same lightweight PDF engine already required by document parsing.
+# No browser, network font service, or office process is needed to export.
+PyMuPDF>=1.24,<2

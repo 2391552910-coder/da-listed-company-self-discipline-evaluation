@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 import os
 
@@ -13,6 +13,11 @@ class Settings:
     model_timeout: int = 3600
     reference_tokenizer_file: str | None = None
     reference_tokenizer_sha256: str | None = None
+    llm_base_url: str = ""
+    llm_api_key: str = field(default="", repr=False)
+    llm_model: str = ""
+    llm_temperature: float | None = None
+    llm_json_mode: bool = True
 
     @classmethod
     def from_env(cls):
@@ -29,4 +34,9 @@ class Settings:
             int(os.getenv("MODEL_TIMEOUT_SECONDS", "3600")),
             os.getenv("REFERENCE_TOKENIZER_FILE"),
             os.getenv("REFERENCE_TOKENIZER_SHA256"),
+            os.getenv("LLM_BASE_URL", ""),
+            os.getenv("LLM_API_KEY", ""),
+            os.getenv("LLM_MODEL", ""),
+            float(os.environ["LLM_TEMPERATURE"]) if os.getenv("LLM_TEMPERATURE") else None,
+            os.getenv("LLM_JSON_MODE", "true").lower() == "true",
         )

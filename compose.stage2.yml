@@ -26,7 +26,13 @@ services:
         condition: service_healthy
   backend:
     build: ./backend
-    environment: *environment
+    environment: &application_environment
+      <<: *environment
+      LLM_BASE_URL: ${LLM_BASE_URL:-}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_MODEL: ${LLM_MODEL:-}
+      LLM_TEMPERATURE: ${LLM_TEMPERATURE:-}
+      LLM_JSON_MODE: ${LLM_JSON_MODE:-true}
     volumes: ["stage2_assets:/data"]
     ports: ["127.0.0.1:8000:8000"]
     depends_on:
@@ -34,7 +40,7 @@ services:
         condition: service_completed_successfully
   worker:
     build: ./backend
-    environment: *environment
+    environment: *application_environment
     volumes: ["stage2_assets:/data"]
     command: ["python","-m","app.documents.cli","worker"]
     depends_on:

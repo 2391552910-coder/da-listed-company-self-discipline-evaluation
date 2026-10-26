@@ -45,6 +45,13 @@ def main(argv=None):
     sub.add_parser("contexts");sub.add_parser("jobs")
     cancel=sub.add_parser("cancel");cancel.add_argument("job_id")
     retry=sub.add_parser("retry");retry.add_argument("job_id");retry.add_argument("--key")
+    sub.add_parser("question-sets")
+    evaluation=sub.add_parser("evaluate")
+    evaluation.add_argument("request_file",type=Path);evaluation.add_argument("--key")
+    sub.add_parser("evaluations")
+    show_evaluation=sub.add_parser("show-evaluation");show_evaluation.add_argument("run_id")
+    export=sub.add_parser("export")
+    export.add_argument("run_id");export.add_argument("--format",choices=["html","pdf"],default="html");export.add_argument("--key")
     args=parser.parse_args(argv)
     docs=Documents(Settings.from_env());indexes=Indexes(docs)
     from app.documents.jobs import JobControl
@@ -71,6 +78,18 @@ def main(argv=None):
         elif args.command=="retry":result=jobs.retry(args.job_id,args.key)
         elif args.command=="job":result=docs.job(args.job_id)
         elif args.command=="source":result=docs.source(args.chunk_id)
+        elif args.command=="question-sets":
+            from app.evaluation.questions import question_sets
+            result={"items":question_sets()}
+        elif args.command in {"evaluate","evaluations","show-evaluation"}:
+            from app.evaluation.service import Evaluations
+            evaluations=Evaluations(docs)
+            if args.command=="evaluate":result=evaluations.enqueue(**json.loads(args.request_file.read_text(encoding="utf-8")),key=args.key)
+            elif args.command=="evaluations":result=evaluations.list()
+            else:result=evaluations.get(args.run_id)
+        elif args.command=="export":
+            from app.reports.service import Reports
+            result=Reports(docs).create(args.run_id,format=args.format,key=args.key)
         print(json.dumps(result,ensure_ascii=False,indent=2))
         return 0
     except DomainError as error:

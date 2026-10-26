@@ -153,7 +153,7 @@ class Documents:
         result.update(result=json.loads(row["result_json"]) if row.get("result_json") else None,
                       cancel_requested=bool(row.get("cancel_requested",0)),parent_job_id=row.get("parent_job_id"),
                       progress=json.loads(row.get("progress_json") or "{}"))
-        if row["kind"]=="context":
+        if row["kind"] in {"context","evaluation"}:
             result["run_id"]=json.loads(row["payload_json"]).get("run_id")
         return result
 
@@ -263,8 +263,9 @@ class Documents:
                         WHERE id=? AND status='running' AND lease_until=? AND lease_until<?
                         AND attempt_count=? AND COALESCE(lease_owner,'')=COALESCE(?,'')""",
                         (status,error,moment,old["id"],old["lease_until"],moment,old["attempt_count"],old["lease_owner"])).rowcount
-                    if expired_count==1 and old["kind"]=="context":
-                        db.execute("UPDATE t_retrieval_run SET status=? WHERE job_id=?",(status,old["id"]))
+                    if expired_count==1:
+                        from app.documents.jobs import JobControl
+                        JobControl._sync_run(db,old,status)
             row=db.one("""SELECT * FROM t_job WHERE cancel_requested=0 AND
                 (status='queued' OR (status='running' AND lease_until<? AND attempt_count<3))
                 ORDER BY created_at,id LIMIT 1""",(moment,))
@@ -282,6 +283,8 @@ class Documents:
                 (uid(),row["id"],worker_id,claimed["attempt_count"],moment,"running"))
             if row["kind"]=="context":
                 db.execute("UPDATE t_retrieval_run SET status='running' WHERE job_id=?",(row["id"],))
+            elif row["kind"]=="evaluation":
+                db.execute("UPDATE t_evaluation_run SET status='running' WHERE job_id=?",(row["id"],))
             return claimed
 
     def heartbeat(self,job_id,worker_id):
@@ -293,11 +296,14 @@ class Documents:
         return JobControl(self).finish(job_id,worker_id,result,error,status)
 
     def retry_payload(self,kind,payload,db):
-        if kind!="context":
+        if kind not in {"context","evaluation"}:
             raise DomainError("RETRY_PAYLOAD_UNAVAILABLE","该类型缺少重试身份适配",409)
         from app.retrieval.service import Contexts
-        parent=required(db.one("SELECT * FROM t_retrieval_run WHERE id=?",(payload.get("run_id"),)))
+        from app.evaluation.service import Evaluations
+        table="t_evaluation_run" if kind=="evaluation" else "t_retrieval_run"
+        parent=required(db.one("SELECT * FROM "+table+" WHERE id=?",(payload.get("run_id"),)))
         request=payload.get("request")
         if not isinstance(request,dict) or sha(dump(request).encode())!=parent["request_sha256"]:
             raise DomainError("REQUEST_SNAPSHOT_MISMATCH","历史重试请求与运行快照不一致",409)
-        return {"run_id":Contexts.new_run(db,request,parent["id"]),"request":request}
+        service=Evaluations if kind=="evaluation" else Contexts
+        return {"run_id":service.new_run(db,request,parent["id"]),"request":request}

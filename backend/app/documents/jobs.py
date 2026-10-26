@@ -60,6 +60,12 @@ class JobControl:
             payload=json.loads(row["payload_json"])
             if isinstance(payload,dict) and payload.get("index_id"):
                 db.execute("UPDATE t_index_version SET status='failed' WHERE id=? AND status!='ready'",(payload["index_id"],))
+        elif row["kind"]=="evaluation":
+            db.execute("UPDATE t_evaluation_run SET status=? WHERE job_id=?",(status,row["id"]))
+            if status in {"cancelled","failed","budget_exhausted"}:
+                db.execute("""UPDATE t_model_call SET status='uncertain',
+                    error_code='MODEL_CALL_OUTCOME_UNKNOWN',finished_at=?
+                    WHERE job_id=? AND status='in_flight'""",(now(),row["id"]))
 
     def cancel(self, job_id):
         moment = now()
@@ -165,7 +171,7 @@ class JobControl:
             prepared = callback(row["kind"], payload, db)
             if not isinstance(prepared, dict):
                 raise DomainError("INVALID_RETRY_PAYLOAD", "重试快照必须为对象", 409)
-            if row["kind"] == "context" and prepared.get("run_id") == payload.get("run_id"):
+            if row["kind"] in {"context","evaluation"} and prepared.get("run_id") == payload.get("run_id"):
                 raise DomainError("RETRY_IDENTITY_REUSED", "重试必须新建检索运行", 409)
             return prepared
         raise DomainError("RETRY_PAYLOAD_UNAVAILABLE", "该任务类型缺少重试身份适配", 409)
@@ -190,11 +196,12 @@ class JobControl:
                 payload = self._prepare_retry(db, previous)
                 result = self.docs._enqueue(db, previous["kind"], payload, key, request)
                 db.execute("UPDATE t_job SET parent_job_id=? WHERE id=?", (job_id, result["id"]))
-                if previous["kind"] == "context":
+                if previous["kind"] in {"context","evaluation"}:
                     if not payload.get("run_id"):
                         raise DomainError("INVALID_RETRY_PAYLOAD", "重试缺少新检索运行", 409)
-                    bound = db.execute("""UPDATE t_retrieval_run SET job_id=?
-                        WHERE id=? AND job_id IS NULL""", (result["id"], payload["run_id"])).rowcount
+                    table="t_evaluation_run" if previous["kind"]=="evaluation" else "t_retrieval_run"
+                    bound = db.execute("UPDATE "+table+" SET job_id=? WHERE id=? AND job_id IS NULL",
+                                       (result["id"], payload["run_id"])).rowcount
                     if bound != 1:
                         raise DomainError("RETRY_RUN_CONFLICT", "新检索运行已绑定其他任务或不存在", 409)
                 return self._public(_required(db.one("SELECT * FROM t_job WHERE id=?", (result["id"],))))
