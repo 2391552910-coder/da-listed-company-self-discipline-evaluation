@@ -91,7 +91,13 @@ def build_manifest(root, paths=None, *, exclude_paths=()):
                     raise DomainError("DELIVERY_LINK_REJECTED", "交付目录不能包含链接", 409)
                 keep.append(name)
             dirs[:] = keep
-            candidates.extend((directory / name).relative_to(root).as_posix() for name in names)
+            for name in names:
+                relative = (directory / name).relative_to(root).as_posix()
+                if _protected(relative) or relative in excluded:
+                    continue
+                if _linked(directory / name):
+                    raise DomainError("DELIVERY_LINK_REJECTED", "交付目录不能包含链接", 409)
+                candidates.append(relative)
         candidates = [p for p in candidates if not _protected(p) and _source_file(p) and p not in excluded]
     else:
         if not isinstance(paths, (list, tuple)) or not paths:
