@@ -9,3 +9,10 @@ uploads/
 .idea/
 .vscode/
 .DS_Store
+
+# Local source documents, indexes, diagnostics and test artifacts
+backend/runtime/
+backend/.test-runtime*/
+backend/backend/
+test-results/
+.pytest_cache/

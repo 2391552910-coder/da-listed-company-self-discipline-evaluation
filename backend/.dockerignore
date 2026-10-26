@@ -1,0 +1,8 @@
+.env
+.venv/
+runtime/
+.test-runtime*/
+__pycache__/
+*.pyc
+tests/
+backend/

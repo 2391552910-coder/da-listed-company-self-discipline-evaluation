@@ -1,0 +1,11 @@
+# Web/database environment only. No torch, Milvus or MinerU required.
+fastapi>=0.115,<1
+uvicorn>=0.30,<1
+SQLAlchemy>=2.0,<2.1
+alembic>=1.13,<2
+psycopg[binary]>=3.2,<4
+pydantic>=2.9,<3
+python-dotenv>=1.0,<2
+python-multipart>=0.0.18,<1
+PyMuPDF>=1.24,<2
+jieba==0.42.1
