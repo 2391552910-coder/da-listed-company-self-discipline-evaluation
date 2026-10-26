@@ -1,104 +1,58 @@
 # 基于大模型的上市公司主体自律评价系统
 
-硕士学位论文《基于大模型的上市公司主体自律评价系统的设计与实现》配套实现代码。
-系统以 A 股上市公司年度报告和 CSMAR 结构化数据为输入，通过 **AHP-Transformer 混合赋权**计算主体自律指数，利用**大模型（DeepSeek）**对年报进行四维度自律信息抽取与多维度评价，并基于 **RAG（BGE-M3 + Milvus）**注入监管法规依据实现评价增强与证据溯源。
+硕士论文《基于大模型的上市公司主体自律评价系统的设计与实现》配套工程。
 
-> 代码按功能模块与分层组织，不按照论文章节顺序排版。
+**当前状态：阶段 1 设计与代码核查已完成，业务实现仍为原型。** 本次交付为设计文档与离线审计，不代表双源评价、容器部署或真实模型端到端流程已通过验收。
 
-## 技术栈
+## 设计入口
 
-| 层 | 技术 |
+- [文档导航与阶段状态](docs/README.md)
+- [需求范围与架构决策](docs/stage1/01-scope-and-architecture.md)
+- [现有代码审计与改造清单](docs/stage1/02-baseline-audit.md)
+- [数据库与迁移设计](docs/stage1/03-data-design.md)
+- [接口与页面设计](docs/stage1/04-api-and-pages.md)
+- [开发顺序与验收标准](docs/stage1/05-implementation-and-acceptance.md)
+- [小论文方法与代码复用映射](docs/stage1/06-research-reuse.md)
+
+## 已确认的项目边界
+
+- 第三章：主体自律指数，用户稍后提供已有数据和结果；当前仅设计接入位置。
+- 第四章：年报与法规双源 RAG，固定双源流程为主，工具 Agent 为可选扩展。
+- 第五章：完整 Web 系统设计、实现及测试，服务论文答辩。
+- 复用小论文真实语料、检索模型和本地接口配置；兼顾 Windows 与服务器运行。
+- 重要需求、设计、代码、测试摘要及阶段结果持续提交 GitHub。真实语料、模型权重、密钥及原始调用记录默认留在运行环境，通过脱敏清单与哈希记录复现关系。
+
+## 技术路线
+
+| 部分 | 设计基线 |
 | --- | --- |
-| 前端 | Vue3 + Element Plus + ECharts + Vite |
-| 控制层 | FastAPI（REST API） |
-| 业务层 | Python 服务模块（LangChain 编排大模型与 RAG 流程） |
-| 数据访问层 | SQLAlchemy Repository（DAO） |
-| 结构化存储 | PostgreSQL |
-| 向量检索 | Milvus（HNSW）+ BM25 双路混合检索 |
-| 大模型 | DeepSeek（OpenAI 兼容接口） |
-| 嵌入模型 | BGE-M3（sentence-transformers） |
-| 年报解析 | MinerU（降级 pdfplumber） |
+| 前端 | Vue3、Element Plus、ECharts、Vite |
+| 后端 | FastAPI、SQLAlchemy、独立任务 Worker |
+| 业务存储 | PostgreSQL；增加版本化迁移 |
+| 文档与索引 | 原文件和定位信息不可变；先适配研究原型的可校验索引制品 |
+| 检索 | 年报与法规独立限定作用域，BM25 + 稠密召回，可配置重排 |
+| 模型 | 复用 Qwen3-Embedding-0.6B / Qwen3-Reranker-0.6B；生成 API 可配置 |
+| 向量存储扩展 | 保留 Milvus 适配方向，须通过同一作用域与模型身份契约验证 |
 
-## 系统架构（前后端分离三层架构）
+现有源码仍含 BGE-M3 + Milvus、按维度截取文本和同步评价等旧实现，尚未迁移至上述设计。索引评分与大模型文本评价分开表示；第三章结果未接入时不得填充虚构指数或等级。
 
-```
-frontend/  Vue3 SPA
-   │  /api/v1/**
-   ▼
-backend/app/api/v1/        控制层：参数校验、路由、统一响应
-   ▼
-backend/app/services/      业务层：指数计算、年报解析、LLM 评价、RAG 检索、报告生成
-   ▼
-backend/app/repositories/  数据访问层：SQLAlchemy CRUD
-   ├─ PostgreSQL  公司/指标/指数/评价/证据/知识元数据
-   └─ Milvus      监管知识向量（BGE-M3，1024 维，HNSW 索引）
+## 目录
 
-backend/app/rag/           RAG 支撑：提示词模板、嵌入、向量库、混合检索器
+```text
+backend/       现有 FastAPI 原型
+frontend/      现有 Vue 页面原型
+docker-compose.yml  现有容器配置，存在待修复项
+docs/stage1/   已完成的需求、审计、数据、接口及实施设计
 ```
 
-## 核心流程
+## 阶段 1 离线核查
 
-1. **数据导入**：CSMAR 四维度十二项指标 Excel/CSV 批量导入；年报 PDF 上传后经 MinerU 解析 → 章节识别 → 治理段落切分 → 维度标注。
-2. **指数计算**：极差标准化 → AHP 主观权重（含一致性检验）+ Transformer 多头注意力客观权重 → 先验正则化融合 → 加权评分与 A/B/C/D 分级。
-3. **大模型评价**：逐维度执行 事实抽取（LangChain PromptTemplate + DeepSeek）→ RAG 检索法规 → 结构化维度评价（JSON）→ 总体摘要。
-4. **证据溯源**：评价引用的法规条款与处罚案例落库，支持按评价回溯具体依据与相似度。
-5. **报告导出**：整合指数、四维评价、证据清单，导出 HTML / PDF 评价报告。
-
-## 快速开始
-
-### Docker 一键启动
+在仓库根目录使用 Python 3.10+：
 
 ```bash
-cp backend/.env.example backend/.env   # 填入 DeepSeek API Key
-docker compose up -d --build
+python docs/stage1/audit_baseline.py --output docs/stage1/baseline-audit.json
 ```
 
-- 前端：http://localhost:8080
-- 后端接口文档（Swagger）：http://localhost:8000/docs
+该命令只解析源码，并隔离执行两个方法以复现已确认缺陷；不启动数据库、不加载模型、不调用外部 API。历史基线为 `cdd17fdd95bd01e658f6931007d62c5b352087a5`。业务修复后，缺陷复现结果允许变化，不应将此审计脚本作为要求缺陷继续存在的回归测试。
 
-### 本地开发
-
-```bash
-# 1. 基础设施
-docker compose up -d postgres milvus-etcd milvus-minio milvus
-
-# 2. 后端
-cd backend
-python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-cp .env.example .env   # 配置数据库与 LLM_API_KEY
-uvicorn app.main:app --reload --port 8000
-
-# 3. 前端
-cd ../frontend
-npm install
-npm run dev            # http://localhost:5173，已配置 /api 代理
-```
-
-## 目录说明
-
-```
-backend/app/
-├── api/v1/         控制层路由（company / indicator / reports / evaluations / rag / reports-export）
-├── services/       业务层（import / annual_report / index / llm / evaluation / rag / report）
-├── repositories/   数据访问层（BaseRepository + 各表 Repository）
-├── models/         SQLAlchemy ORM（对应 5.3.1 数据库设计）
-├── schemas/        Pydantic 出入参模型
-├── rag/            prompts（提示词模板）/ embeddings（BGE-M3）/ vector_store（Milvus）/ retriever（混合检索）
-└── core/           数据库连接、全局异常
-```
-
-## 四维度十二项指标体系
-
-| 维度 | 指标 |
-| --- | --- |
-| D1 信息披露质量 | 披露及时性、披露完整性、信息披露考评等级 |
-| D2 董事会治理有效性 | 独立董事占比、董事会会议频次、专门委员会运作 |
-| D3 内部控制与合规性 | 内控审计意见、违规处罚次数、内控缺陷整改率 |
-| D4 第三方声誉 | ESG 评级、审计意见类型、媒体舆情得分 |
-
-## 注意事项
-
-- `.env` 中的 `LLM_API_KEY` 必填；未配置时评价接口返回业务异常提示。
-- Milvus 首次写入向量时自动创建集合与 HNSW 索引。
-- 首次计算指数前会自动初始化指标体系（幂等）。
+完整启动说明将在依赖、代理、文件挂载和 Worker 配置通过验证后更新。

@@ -1,0 +1,68 @@
+{
+  "schema_version": "stage1-baseline-audit-v1",
+  "audited_baseline_commit": "cdd17fdd95bd01e658f6931007d62c5b352087a5",
+  "executed_at_utc": "2026-10-26T06:29:18.079512+00:00",
+  "scope": "AST syntax and isolated method probes, not end-to-end validation",
+  "network_calls": 0,
+  "model_calls": 0,
+  "production_changes": false,
+  "observations": [
+    {
+      "check": "backend_python_syntax",
+      "files": 51,
+      "status": "pass",
+      "errors": []
+    },
+    {
+      "check": "A08_missing_index_html",
+      "reproduced": true,
+      "exception_type": "AttributeError",
+      "message": "'NoneType' object has no attribute 'd1_score'"
+    },
+    {
+      "check": "A03_empty_citations_write_candidates",
+      "reproduced": true,
+      "candidate_count": 1,
+      "declared_citation_count": 0,
+      "saved_evidence_count": 1
+    },
+    {
+      "check": "A07_frontend_nginx_config",
+      "custom_nginx_copy_present": false
+    },
+    {
+      "check": "A09_fixed_dashboard_values",
+      "fixed_radar_present": true,
+      "fixed_pie_present": true
+    },
+    {
+      "check": "A16_indicator_missing_import",
+      "indicator_constructed": true,
+      "indicator_imported": false
+    },
+    {
+      "check": "baseline_engineering_assets",
+      "tests_directory_present": false,
+      "migration_directory_present": false,
+      "ci_workflows_present": false
+    }
+  ],
+  "source_sha256": {
+    "backend/app/services/evaluation_service.py": "04ab90f4b9b730a35468630e5cc0b762e64a11a72e845bc24bac3e20c2b29bdd",
+    "backend/app/services/report_service.py": "aef4d9569546e167f023226f137b4b1ff5eb54eed6b1997a89455defe78ce170",
+    "backend/app/services/index_service.py": "bbcd12c6e36c426e6e6e5bd8b670ad1e7b9766d1deb691bd505346472a2b8f9c",
+    "frontend/Dockerfile": "374a29490a0b4f54e0eeb2cd9f6dbcf6e1fb5fd70ea97cb7592df786b5d44299",
+    "frontend/src/views/Dashboard.vue": "9aaedcf939ba025727d2c3009a38f1d0b6c1c061baffa0a289f9cba975b72be8"
+  },
+  "not_verified": [
+    "dependency installation",
+    "FastAPI integration",
+    "PostgreSQL",
+    "Milvus",
+    "real PDF parsing",
+    "GPU models",
+    "generation API",
+    "PDF rendering",
+    "Docker deployment"
+  ]
+}
