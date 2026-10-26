@@ -1,0 +1,136 @@
+{
+  "schema_version": "stage67-code-delivery-verification-v1",
+  "date": "2026-10-26",
+  "scope": "Stage 6 and 7 code implementation and engineering acceptance",
+  "source_commit": "bef0f8b939bb48d1f3214be1a92dd8b7d85b4044",
+  "code_merge_commit": "23a8dfcf668bb43e3982ff680cca1a450917b297",
+  "pr": 4,
+  "ci": {
+    "run": 40305500873,
+    "status": "passed",
+    "linux_backend": {
+      "passed": 478,
+      "failed": 0,
+      "skipped": 0,
+      "duration_seconds": 121.97
+    },
+    "windows_backend": {
+      "passed": 475,
+      "skipped": 3,
+      "failed": 0,
+      "duration_seconds": 452.18,
+      "skip_reason": "PostgreSQL tests run on Linux PostgreSQL 16 service"
+    },
+    "postgresql_migration": {
+      "from": "0001_documents",
+      "to": "0004_experiments_agent",
+      "business_schema_revision": 5,
+      "legacy_seed_preserved": true
+    },
+    "frontend": {
+      "production_build": "passed",
+      "duration_seconds": 5.51
+    },
+    "browser": {
+      "engine": "Chromium",
+      "passed": 4,
+      "duration_seconds": 37,
+      "data_kind": "synthetic fixture documents and loopback HTTP model provider",
+      "paths": [
+        "single question -> evidence -> frozen HTML/PDF download -> refresh",
+        "four-dimensional evaluation -> evidence gaps and null scores",
+        "Agent planning -> restricted supplemental retrieval -> draft -> model verification trace",
+        "fixed/Agent experiment -> persisted runs -> manual rating -> JSON/CSV export -> refresh"
+      ]
+    },
+    "deployment": {
+      "status": "passed",
+      "compose_version": "v2.38.2",
+      "database": "PostgreSQL 16",
+      "route": "built Nginx same-origin entry",
+      "independent_worker": true,
+      "source_files_verified": 2,
+      "frozen_exports_verified": 2,
+      "restart_scope": [
+        "backend",
+        "worker",
+        "frontend"
+      ],
+      "model_calls_during_readonly_reopen": 0,
+      "data_kind": "synthetic deployment fixture"
+    },
+    "postgresql_backup_restore": {
+      "schema_version": "postgresql-backup-acceptance-v1",
+      "status": "passed",
+      "data_kind": "synthetic_fixture",
+      "database_profile": "PostgreSQL 16",
+      "business_schema_revision": 5,
+      "database_and_assets_round_trip": true,
+      "source_file_sha256": "26d073620d9e7d8fd0e819d6e20501d993365a19dcea409608e2143b42aa6f36",
+      "index_manifest_sha256": "4bb78ec00e94ba202748c5d3ced1fdf1254a1583ad3296c79c5c357a6cfa0136",
+      "annual_file_sha256": "0e25baf01cb905a3276caea9e6fdd3075012147ce65918d72f8a164b4f251948",
+      "source_files_verified": 2,
+      "backup_manifest_sha256": "df4421ecd3d607b6c11e74e612781c33c59c219add425d796d9a8f33829e6a6d",
+      "restored_manifest_sha256": "df4421ecd3d607b6c11e74e612781c33c59c219add425d796d9a8f33829e6a6d",
+      "file_count": 6,
+      "existing_databases_overwritten": 0,
+      "real_model_calls": 0
+    },
+    "artifacts": {
+      "linux": "https://github.com/2391552910-coder/da-listed-company-self-discipline-evaluation/actions/runs/40305500873/artifacts/12643056160",
+      "windows": "https://github.com/2391552910-coder/da-listed-company-self-discipline-evaluation/actions/runs/40305500873/artifacts/12643396265",
+      "deployment": "https://github.com/2391552910-coder/da-listed-company-self-discipline-evaluation/actions/runs/40305500873/artifacts/12642850778"
+    }
+  },
+  "local": {
+    "first_full_suite": {
+      "passed": 451,
+      "skipped": 7,
+      "duration_seconds": 243.41,
+      "note": "Executed while final tests were being added; final CI above is authoritative"
+    },
+    "final_targeted_experiment_health_settings": {
+      "passed": 37,
+      "skipped": 2
+    },
+    "manifest_after_link_fix": {
+      "passed": 21,
+      "skipped": 1,
+      "note": "Local Windows symlink permission unavailable; Linux CI covers this"
+    }
+  },
+  "failure_history": [
+    {
+      "run": 40304238673,
+      "stage": "backend",
+      "result": "477 passed,1 failed",
+      "cause": "Unsupported file extension filtered before unprotected symlink rejection",
+      "resolution": "Check unprotected links before source-extension selection"
+    },
+    {
+      "run": 40304898458,
+      "stage": "PG backup acceptance fixture",
+      "result": "478 backend passed; fixture preparation failed",
+      "cause": "The fixture lacked the annual-report corpus required by dual-source indexes",
+      "resolution": "Seed both synthetic PDF annual report and TXT regulation; improved error codes"
+    }
+  ],
+  "research_boundary": {
+    "agent_protocol": "bounded-dual-agent-v1 is newly implemented; not a historical paper Agent reproduction",
+    "real_external_model_calls_this_stage": 0,
+    "agent_efficacy_conclusion": null,
+    "formal_server_rollout_performed": false,
+    "third_chapter_index": null,
+    "stage4_real_model_blocker_preserved": true
+  },
+  "unverified": [
+    "Real external model generation and independent model quality experiment",
+    "Real-document Windows native CUDA/API end-to-end acceptance",
+    "Formal target server rollout"
+  ],
+  "important_notes": [
+    "Manual and automatic quality ratings, historical imports and new runs remain separate",
+    "Unrated and failed results are not filled with quality score zero",
+    "CI fixture responses validate engineering behavior, not semantic correctness or Agent efficacy"
+  ]
+}

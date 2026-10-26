@@ -1,6 +1,6 @@
 # 项目设计文档
 
-更新日期：2026-10-26（北京时间）。阶段1至3已验收；阶段4代码已实现、真实模型生成因网络不可达尚未验收；阶段5工作台和报告已通过CI及浏览器fixture闭环。不得将fixture测试响应作为论文模型实证。
+更新日期：2026-10-26（北京时间）。阶段6/7代码已交付并通过Linux/Windows、4条浏览器、Compose及PG冷备恢复检查。真实模型实验、阶段4真实生成及正式服务器上线仍需独立验收。不得将fixture测试响应作为论文模型实证。
 
 | 文档 | 用途 |
 | --- | --- |
@@ -35,8 +35,8 @@
 
 ## 阶段6 实验与Agent扩展
 
-[受限Agent、实验协议、评分与历史隔离](stage6/README.md)
+[受限Agent、实验协议、评分与历史隔离](stage6/README.md) · [最终测试摘要](stage6/test-summary.json)
 
 ## 阶段7 部署与交付
 
-[双环境启动、持久化、备份恢复与交付检查](stage7/README.md)
+[双环境启动、持久化、备份恢复与交付检查](stage7/README.md) · [最终测试摘要](stage7/test-summary.json) · [PG恢复验证](stage7/postgres-backup-validation.json)

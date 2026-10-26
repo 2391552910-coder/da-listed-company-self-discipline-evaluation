@@ -110,3 +110,9 @@ python scripts/smoke-deployment.py --state /private/acceptance-new.json --verify
 烟测仅接受全新空公司库，真实经过Nginx上传合成PDF/TXT、独立Worker解析/索引/HTTP评价、引用原件核对和双格式导出；重启后只读验证来源、运行快照和报告哈希，零次额外模型请求。它验证工程流程，不验证真实模型质量或法规语义支持。本机缺少Docker，容器运行结果应由CI及部署环境记录；当前不宣称已完成外部服务器真实部署。
 
 配置依据：[Docker启动顺序](https://docs.docker.com/compose/how-tos/startup-order/)、[Compose include](https://docs.docker.com/compose/how-tos/multiple-compose-files/include/)、[Nginx proxy_pass](https://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_pass)、[PostgreSQL16备份](https://www.postgresql.org/docs/16/backup-dump.html)。
+
+## 本轮最终验证记录
+
+源提交 `bef0f8b939bb48d1f3214be1a92dd8b7d85b4044` 的CI已通过：Linux 478项、Windows 475项（另3项PG在Linux执行）、前端构建和4条Chromium流程。正式Compose通过Nginx/独立Worker/合成资料评价与报告、应用容器重启后2份原件与2份冻结导出核对；PG冷备恢复到新空库与新资料目录通过，未覆盖已有数据库。完整指标、失败修复历史与CI制品链接见[测试摘要](test-summary.json)。
+
+本轮交付为代码与工程验证，未宣称真实模型质量收益或正式目标服务器已经上线。

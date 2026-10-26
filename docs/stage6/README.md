@@ -58,3 +58,9 @@ CLI新增 `create-experiment request.json`、`experiments`、`show-experiment ID
 - Agent协议和执行恢复测试、实验取消崩溃窗口、评分绑定、历史隔离、比较分组、预算和并发幂等均有测试。
 - 新增浏览器用例使用实际UI/API/独立Worker、受限补检索与loopback HTTP provider；文档与模型响应明确为合成fixture。
 - 本轮没有真实外部模型调用，也没有研究数据上的固定/Agent质量对比结论。真实API验收仍沿用阶段4阻塞记录，完整研究实验须另行执行并导入独立评分。
+
+## 本轮最终验证记录
+
+源提交 `bef0f8b939bb48d1f3214be1a92dd8b7d85b4044` 的CI已通过：Linux 478项、Windows 475项（另3项PG在Linux执行）、前端构建和4条Chromium流程。正式Compose通过Nginx/独立Worker/合成资料评价与报告、应用容器重启后2份原件与2份冻结导出核对；PG冷备恢复到新空库与新资料目录通过，未覆盖已有数据库。完整指标、失败修复历史与CI制品链接见[测试摘要](test-summary.json)。
+
+本轮交付为代码与工程验证，未宣称真实模型质量收益或正式目标服务器已经上线。
