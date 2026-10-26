@@ -9,6 +9,7 @@ concurrency:
 jobs:
   documents:
     runs-on: ubuntu-24.04
+    timeout-minutes: 20
     services:
       postgres:
         image: postgres:16
@@ -64,6 +65,7 @@ jobs:
           path: test-results/
   windows-portable:
     runs-on: windows-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -90,6 +92,7 @@ jobs:
           path: test-results/
   deployment:
     runs-on: ubuntu-24.04
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -98,6 +101,7 @@ jobs:
       - run: python -m pip install 'PyMuPDF>=1.24,<2'
       - name: Prepare isolated deployment fixture
         run: |
+          docker compose version
           mkdir -p test-results
           printf '%s\n' 'POSTGRES_PASSWORD=ci-only-deployment-fixture' 'COMPOSE_PROJECT_NAME=dalunacceptance' 'DALUN_BIND_ADDRESS=127.0.0.1' 'DALUN_WEB_PORT=8080' > "$RUNNER_TEMP/dalun-acceptance.env"
           docker compose --env-file "$RUNNER_TEMP/dalun-acceptance.env" -f compose.yml -f deploy/compose.acceptance.yml config --quiet
