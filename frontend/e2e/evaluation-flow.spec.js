@@ -6,11 +6,11 @@ import fs from 'node:fs/promises'
 test('persistent evaluation, original evidence, and frozen HTML/PDF downloads', async ({ page }) => {
   await page.goto('/evaluations/new?stock_code=019997')
   await expect(page.getByRole('heading', { name: '评价工作台' })).toBeVisible()
-  await page.getByTestId('evaluation-index').getByRole('combobox').click()
+  await page.getByTestId('evaluation-index').click()
   await page.getByRole('option', { name: /bm25_diagnostic/ }).click()
   await page.getByTestId('evaluation-question').locator('textarea').fill('依据年报和规则，审计委员会履职有哪些可观察依据与限制？')
   await page.getByText('检索与法规时点', { exact: true }).click()
-  await page.getByTestId('evaluation-tokenizer').getByRole('combobox').click()
+  await page.getByTestId('evaluation-tokenizer').click()
   await page.getByRole('option', { name: 'UTF-8 字节诊断（不是 tokens）' }).click()
   await expect(page.getByTestId('evaluation-submit')).toBeEnabled()
   await page.getByTestId('evaluation-submit').click()
@@ -62,11 +62,11 @@ test('persistent evaluation, original evidence, and frozen HTML/PDF downloads', 
 
 test('four-dimension workspace preserves evidence gaps without numeric scores', async ({ page }) => {
   await page.goto('/evaluations/new?stock_code=019997')
-  await page.getByTestId('evaluation-index').getByRole('combobox').click()
+  await page.getByTestId('evaluation-index').click()
   await page.getByRole('option', { name: /bm25_diagnostic/ }).click()
   await page.getByText('完整四维', { exact: true }).click()
   await page.getByText('检索与法规时点', { exact: true }).click()
-  await page.getByTestId('evaluation-tokenizer').getByRole('combobox').click()
+  await page.getByTestId('evaluation-tokenizer').click()
   await page.getByRole('option', { name: 'UTF-8 字节诊断（不是 tokens）' }).click()
   await page.getByTestId('evaluation-submit').click()
   await expect(page).toHaveURL(/\/evaluations\/[0-9a-f-]{36}$/)
