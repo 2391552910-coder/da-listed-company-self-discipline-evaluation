@@ -94,6 +94,9 @@ jobs:
         working-directory: backend
       - run: python -m pytest tests -q --basetemp=C:/dalun-tests --junitxml=../test-results/windows-stage67.xml
         working-directory: backend
+      - name: Verify Windows Compose fallback and argument safety
+        shell: powershell
+        run: ./scripts/test-compose-command.ps1
       - name: Check PowerShell entry points
         shell: pwsh
         run: |

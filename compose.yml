@@ -21,7 +21,7 @@ x-application: &application
   LLM_JSON_MODE: ${LLM_JSON_MODE:-true}
 services:
   postgres:
-    image: postgres:16-bookworm
+    image: ${DALUN_POSTGRES_IMAGE:-postgres:16-bookworm}
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
