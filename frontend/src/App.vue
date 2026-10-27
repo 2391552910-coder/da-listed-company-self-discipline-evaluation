@@ -25,5 +25,6 @@ const activeMenu=computed(()=>route.path.startsWith('/evaluations') ? '/evaluati
 const currentTitle=computed(()=>navigation.find(item=>item.path===activeMenu.value)?.label || '研究工作台')
 const reduced=ref(false)
 try{reduced.value=localStorage.getItem('dalun-reduced-motion')==='true'}catch{}
-function toggleMotion(){reduced.value=!reduced.value;try{localStorage.setItem('dalun-reduced-motion',String(reduced.value))}catch{}}
+document.documentElement.dataset.motion=reduced.value ? 'reduced' : 'full'
+function toggleMotion(){reduced.value=!reduced.value;document.documentElement.dataset.motion=reduced.value ? 'reduced' : 'full';try{localStorage.setItem('dalun-reduced-motion',String(reduced.value))}catch{}}
 </script>
