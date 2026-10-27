@@ -132,6 +132,23 @@ jobs:
         run: docker compose --env-file "$RUNNER_TEMP/dalun-acceptance.env" -f compose.yml -f deploy/compose.acceptance.yml exec -d worker python -m app.operations.fixture_provider --acknowledge-synthetic-fixture
       - name: Verify Nginx and independent Worker flow
         run: python scripts/smoke-deployment.py --base-url http://127.0.0.1:8080 --state test-results/deployment-state.json --acknowledge-synthetic-fixture
+      - name: Verify proxy follows a recreated backend address
+        run: |
+          set -eu
+          backend=$(docker compose --env-file "$RUNNER_TEMP/dalun-acceptance.env" -f compose.yml -f deploy/compose.acceptance.yml ps -q backend)
+          old_ip=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "$backend")
+          docker stop "$backend"
+          trap 'docker rm -f dalunacceptance-dns-reservation >/dev/null 2>&1 || true' EXIT
+          docker run -d --name dalunacceptance-dns-reservation --network dalunacceptance_default --ip "$old_ip" postgres:16-bookworm sleep 120 >/dev/null
+          docker compose --env-file "$RUNNER_TEMP/dalun-acceptance.env" -f compose.yml -f deploy/compose.acceptance.yml up -d --no-deps --no-build --force-recreate backend
+          backend=$(docker compose --env-file "$RUNNER_TEMP/dalun-acceptance.env" -f compose.yml -f deploy/compose.acceptance.yml ps -q backend)
+          new_ip=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "$backend")
+          test "$old_ip" != "$new_ip"
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8080/health/ready >/dev/null && curl -fsS http://127.0.0.1:8080/api/v1/dashboard >/dev/null; then exit 0; fi
+            sleep 2
+          done
+          exit 1
       - name: Restart application containers and verify persisted artifacts
         run: |
           docker compose --env-file "$RUNNER_TEMP/dalun-acceptance.env" -f compose.yml -f deploy/compose.acceptance.yml restart backend worker frontend

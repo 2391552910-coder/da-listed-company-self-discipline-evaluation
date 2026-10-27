@@ -1,61 +1,16 @@
 {
-  "schema_version": "local-backend-integration-progress-v1",
-  "status": "blocked_local_environment_disconnected",
-  "code_source": "33a1e42d81ad3061cae47eec1d30c359cef73929",
-  "code_merge": "d674e89168861c2f4aae5a5320e12682abd61dfc",
-  "ci_run": 40446910590,
-  "ci": {
-    "windows_native_compose_test": "passed",
-    "linux_tests": {
-      "passed": 507,
-      "seconds": 157.21
-    },
-    "windows_tests": {
-      "passed": 503,
-      "skipped_pg_covered_by_linux": 4,
-      "seconds": 401.32
-    },
-    "browser_tests": {
-      "passed": 11
-    },
-    "production_build": {
-      "passed": true,
-      "seconds": 6.57
-    },
-    "deployment": "passed",
-    "postgres_backup_restore": "passed"
-  },
+  "schema_version": "local-backend-integration-progress-v2",
+  "status": "local_synthetic_flow_passed_real_model_blocked",
+  "baseline_main": "3c27548727c9bca3179d19eeb1e5f16cb31fac35",
+  "ci_prior": {"run": 40446910590, "linux_passed": 507, "windows_passed": 503, "windows_skipped": 4, "browser_passed": 11, "deployment_and_backup_restore": "passed"},
   "local": {
-    "environment": "unavailable",
-    "docker_server": "29.8.0",
-    "standalone_compose": "5.5.1",
-    "cached_postgres": "16.15-alpine",
-    "isolated_project": "dalunlocal20261027",
-    "planned_frontend_url": "http://127.0.0.1:5173",
-    "private_configuration_written": true,
-    "private_configuration_uploaded": false,
-    "image_download_completed": true,
-    "image_sha256_verified": false,
-    "images_imported": false,
-    "full_backend_acceptance_passed": false,
-    "pending": [
-      "restore local execution connection",
-      "synchronize startup fixes",
-      "verify image SHA256",
-      "docker load",
-      "database migration",
-      "API and Worker readiness",
-      "same-origin frontend API connection",
-      "business end-to-end and persistence",
-      "real model connectivity and generation"
-    ]
+    "host": "DESKTOP-M1C1SSQ", "date": "2026-10-27", "docker_server": "29.8.0", "standalone_compose": "5.5.1", "project": "dalunlocal20261027", "frontend_url": "http://127.0.0.1:5173", "postgres_image": "postgres:16-alpine", "postgres_version": "16.15", "postgres_host_port_published": false,
+    "image_sha256_verified": true, "images_imported": true, "migration": "passed", "services_healthy": true, "same_origin_health_and_dashboard": "passed", "browser_real_database_display": "passed",
+    "data_kind": "synthetic_fixture", "retrieval_profile": "bm25_diagnostic", "vector_qwen_cuda_verified": false,
+    "upload_worker_parse_chunks_index_search_context": "passed", "source_offsets_checked": true, "synthetic_model_evaluation": "passed_one_question_two_claims", "synthetic_exports": {"html_bytes": 83809, "pdf_bytes": 1724723}, "restart_persistence": "passed",
+    "real_model": {"status": "blocked", "evaluation_errors": ["MODEL_TRANSPORT_FAILED", "MODEL_HTTP_ERROR"], "minimal_request_http_status": 403, "dns_tcp_tls": "passed", "reason": "provider rejected request; exact cause unknown", "server_consumption": "unknown"},
+    "proxy_backend_address_change": "passed", "nginx_config_test": "passed", "full_real_model_acceptance_passed": false, "real_documents_verified": false, "ahp_transformer_integrated": false
   },
-  "offline_images": {
-    "build_run": 40446098574,
-    "artifact_id": 12709000099,
-    "app_source": "35c36c2d24ea5085f66b4be504b47692a004a685",
-    "retention_days": 7,
-    "private_configuration_included": false
-  },
+  "offline_images": {"build_run": 40446098574, "artifact_id": 12709000099, "app_source": "35c36c2d24ea5085f66b4be504b47692a004a685", "archive_sha256": "8ac2fe1a80f93f575ccbc1ed693d72fcc6534b5db561a4fcc5c31bda92744e77", "frontend_locally_patched": true},
   "existing_plm_services_modified": false
 }
