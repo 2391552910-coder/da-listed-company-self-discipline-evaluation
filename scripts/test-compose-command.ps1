@@ -17,7 +17,7 @@ using System;
 using System.IO;
 class ComposeStub {static int Main(string[] a){File.AppendAllText(Environment.GetEnvironmentVariable("DALUN_TEST_LOG"),String.Join("|",a)+Environment.NewLine);return a.Length>0&&a[0]=="fail"?7:0;}}
 '@
-  $env:PATH=$bin+';'+$oldPath
+  $env:PATH=$bin
   $env:PATHEXT='.CPL'
   $env:DALUN_TEST_PLUGIN='1'
   $plugin=Get-DalunComposeCommand
@@ -35,7 +35,7 @@ class ComposeStub {static int Main(string[] a){File.AppendAllText(Environment.Ge
   Set-Content -LiteralPath $envFile -Value '# isolated command test'
   & (Join-Path $root 'scripts/start.ps1') -EnvFile $envFile -NoBuild -Wait -WaitTimeout 90
   $lines=Get-Content -LiteralPath $env:DALUN_TEST_LOG
-  $up=($lines | Where-Object {$_ -match '\|up\|'})[-1]
+  $up=@($lines | Where-Object {$_ -match '\|up\|'})[-1]
   if(-not $up -or -not $up.Contains($envFile) -or -not $up.Contains('--no-build') -or -not $up.Contains('--wait-timeout|90')){throw 'Start argument preservation failed'}
   & (Join-Path $root 'scripts/stop.ps1') -EnvFile $envFile
   $last=(Get-Content -LiteralPath $env:DALUN_TEST_LOG)[-1]
