@@ -9,7 +9,7 @@ export default defineConfig({
   retries: 0,
   reporter: [['list'], ['html', { outputFolder: '../test-results/browser-report', open: 'never' }]],
   outputDir: '../test-results/browser-artifacts',
-  use: { baseURL: 'http://127.0.0.1:5173', actionTimeout: 15000, navigationTimeout: 30000, trace: 'retain-on-failure', screenshot: 'only-on-failure', acceptDownloads: true },
+  use: { baseURL: 'http://127.0.0.1:5173', channel: process.env.PLAYWRIGHT_CHANNEL || undefined, actionTimeout: 15000, navigationTimeout: 30000, trace: 'retain-on-failure', screenshot: 'only-on-failure', acceptDownloads: true },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
   webServer: [
     { command: 'python ../backend/scripts/seed_browser_acceptance.py --serve', url: 'http://127.0.0.1:8000/health/ready', timeout: 120000, reuseExistingServer: false },
