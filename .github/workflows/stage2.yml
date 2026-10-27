@@ -54,6 +54,18 @@ jobs:
         working-directory: frontend
       - run: npm install --no-save @playwright/test@1.56.1
         working-directory: frontend
+      - name: Provide offline CJK font for visual acceptance
+        working-directory: frontend
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import fitz
+          font = Path("public/acceptance-cjk.ttf")
+          font.parent.mkdir(parents=True, exist_ok=True)
+          font.write_bytes(fitz.Font(fontname="china-s").buffer)
+          with Path("src/style.css").open("a", encoding="utf-8") as css:
+              css.write('\n@font-face{font-family:AcceptanceCJK;src:url("/acceptance-cjk.ttf")}\n:root{font-family:AcceptanceCJK,sans-serif}\n')
+          PY
       # Ubuntu runner provides Chrome and its native libraries; avoid a second CDN download.
       - run: npx playwright test
         working-directory: frontend
