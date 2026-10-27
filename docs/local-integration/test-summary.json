@@ -1,0 +1,61 @@
+{
+  "schema_version": "local-backend-integration-progress-v1",
+  "status": "blocked_local_environment_disconnected",
+  "code_source": "33a1e42d81ad3061cae47eec1d30c359cef73929",
+  "code_merge": "d674e89168861c2f4aae5a5320e12682abd61dfc",
+  "ci_run": 40446910590,
+  "ci": {
+    "windows_native_compose_test": "passed",
+    "linux_tests": {
+      "passed": 507,
+      "seconds": 157.21
+    },
+    "windows_tests": {
+      "passed": 503,
+      "skipped_pg_covered_by_linux": 4,
+      "seconds": 401.32
+    },
+    "browser_tests": {
+      "passed": 11
+    },
+    "production_build": {
+      "passed": true,
+      "seconds": 6.57
+    },
+    "deployment": "passed",
+    "postgres_backup_restore": "passed"
+  },
+  "local": {
+    "environment": "unavailable",
+    "docker_server": "29.8.0",
+    "standalone_compose": "5.5.1",
+    "cached_postgres": "16.15-alpine",
+    "isolated_project": "dalunlocal20261027",
+    "planned_frontend_url": "http://127.0.0.1:5173",
+    "private_configuration_written": true,
+    "private_configuration_uploaded": false,
+    "image_download_completed": true,
+    "image_sha256_verified": false,
+    "images_imported": false,
+    "full_backend_acceptance_passed": false,
+    "pending": [
+      "restore local execution connection",
+      "synchronize startup fixes",
+      "verify image SHA256",
+      "docker load",
+      "database migration",
+      "API and Worker readiness",
+      "same-origin frontend API connection",
+      "business end-to-end and persistence",
+      "real model connectivity and generation"
+    ]
+  },
+  "offline_images": {
+    "build_run": 40446098574,
+    "artifact_id": 12709000099,
+    "app_source": "35c36c2d24ea5085f66b4be504b47692a004a685",
+    "retention_days": 7,
+    "private_configuration_included": false
+  },
+  "existing_plm_services_modified": false
+}
