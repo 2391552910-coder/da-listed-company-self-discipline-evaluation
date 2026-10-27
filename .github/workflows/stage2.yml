@@ -52,6 +52,10 @@ jobs:
         working-directory: frontend
       - run: npm run build
         working-directory: frontend
+      - uses: actions/upload-artifact@v4
+        with:
+          name: frontend-production
+          path: frontend/dist/
       - run: npm install --no-save @playwright/test@1.56.1
         working-directory: frontend
       - name: Provide offline CJK font for visual acceptance

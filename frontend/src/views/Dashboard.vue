@@ -18,11 +18,7 @@
     <div class="summary-stats section" v-loading="loading">
       <el-card v-for="item in stats" :key="item.key"><span :data-testid="'dashboard-count-'+item.key" class="stat-number">{{ dashboard?.counts?.[item.key] ?? '—' }}</span><p class="muted">{{ item.name }}</p></el-card>
     </div>
-    <el-card class="section">
-      <template #header><div class="page-heading"><span>任务状态</span><el-button link @click="$router.push('/tasks')">查看任务</el-button></div></template>
-      <div class="task-stats" data-testid="dashboard-job-statuses"><span v-for="item in jobStatuses" :key="item.status"><el-tag :type="statusType(item.status)">{{ statusName(item.status) }}</el-tag> {{ item.count ?? '—' }}</span></div>
-      <p class="muted">任务按当前公司与年度关联的年报、索引、上下文及评价计次，并保留共享法规解析任务。重试形成新任务，分别计数。</p>
-    </el-card>
+    <DashboardInsights :dashboard="dashboard" :loading="loading" />
     <el-card class="section">
       <template #header>四维证据覆盖</template>
       <p class="muted" data-testid="dashboard-coverage-note" v-if="coverage">在当前范围 {{ coverage.total_runs }} 次评价中，检查最新 {{ coverage.inspected_runs }} 次运行（上限 {{ coverage.run_limit }} 次）。{{ coverage.omitted_runs ? '还有 '+coverage.omitted_runs+' 次较早运行未纳入本表。' : '' }}重复评价及重试按运行次数计数。片段入选、机械引用有效均不代表语义支持、法规适用或评价质量；没有质量评分。</p>
@@ -49,6 +45,7 @@
 <script setup>
 import { computed, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import DashboardInsights from '../components/DashboardInsights.vue'
 import SceneIcon from '../components/SceneIcon.vue'
 import CompanySelect from '../components/CompanySelect.vue'
 import request from '../api/request'
