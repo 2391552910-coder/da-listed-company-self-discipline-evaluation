@@ -138,8 +138,15 @@ jobs:
           backend=$(docker compose --env-file "$RUNNER_TEMP/dalun-acceptance.env" -f compose.yml -f deploy/compose.acceptance.yml ps -q backend)
           old_ip=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "$backend")
           docker stop "$backend"
-          trap 'docker rm -f dalunacceptance-dns-reservation >/dev/null 2>&1 || true' EXIT
-          docker run -d --name dalunacceptance-dns-reservation --network dalunacceptance_default --ip "$old_ip" postgres:16-bookworm sleep 120 >/dev/null
+          trap 'for n in $(seq 1 20); do docker rm -f "dalunacceptance-dns-reservation-$n" >/dev/null 2>&1 || true; done' EXIT
+          reserved=false
+          for n in $(seq 1 20); do
+            name="dalunacceptance-dns-reservation-$n"
+            docker run -d --name "$name" --network dalunacceptance_default postgres:16-bookworm sleep 120 >/dev/null
+            ip=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "$name")
+            if [ "$ip" = "$old_ip" ]; then reserved=true; break; fi
+          done
+          test "$reserved" = true
           docker compose --env-file "$RUNNER_TEMP/dalun-acceptance.env" -f compose.yml -f deploy/compose.acceptance.yml up -d --no-deps --no-build --force-recreate backend
           backend=$(docker compose --env-file "$RUNNER_TEMP/dalun-acceptance.env" -f compose.yml -f deploy/compose.acceptance.yml ps -q backend)
           new_ip=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "$backend")
