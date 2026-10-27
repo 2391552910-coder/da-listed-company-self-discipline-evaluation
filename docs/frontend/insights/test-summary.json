@@ -1,0 +1,68 @@
+{
+  "schema_version": "dashboard-insights-validation-v1",
+  "status": "passed",
+  "source_commit": "44f330584f8dc0bee3ce29df2ed0e89f2b72e33a",
+  "merge_commit": "2b5cdcc64c3fdf7db01e313d8db873498b70af88",
+  "ci_run": 40443808735,
+  "backend_linux": {
+    "passed": 507,
+    "elapsed_seconds": 159.95
+  },
+  "backend_windows": {
+    "passed": 503,
+    "skipped_postgresql_covered_by_linux": 4,
+    "elapsed_seconds": 360.83
+  },
+  "production_build": {
+    "status": "passed",
+    "elapsed_seconds": 7.03
+  },
+  "browser": {
+    "passed": 11,
+    "channel": "runner-provided Chrome",
+    "reviewed": [
+      "browser-insights-panel.png",
+      "browser-insights-mobile.png"
+    ],
+    "coverage": [
+      "persisted task total",
+      "evidence-source toggle",
+      "unavailable remains unknown",
+      "labelled client-only sample",
+      "375px body does not overflow"
+    ]
+  },
+  "local_preview": {
+    "url": "http://127.0.0.1:5173/?charts=demo",
+    "data_kind": "explicit client-only sample; backend not connected",
+    "artifact_id": 12706819801
+  },
+  "semantics": {
+    "coverage_denominator": "published successful answers per dimension",
+    "quality_score": null,
+    "demo_data_submitted_to_backend": false,
+    "regulations": "shared library"
+  },
+  "artifacts": [
+    {
+      "name": "stage67-test-results",
+      "id": 12707850762,
+      "url": "https://github.com/2391552910-coder/da-listed-company-self-discipline-evaluation/actions/runs/40443808735/artifacts/12707850762"
+    },
+    {
+      "name": "windows-stage67-test-results",
+      "id": 12706888967,
+      "url": "https://github.com/2391552910-coder/da-listed-company-self-discipline-evaluation/actions/runs/40443808735/artifacts/12706888967"
+    },
+    {
+      "name": "compose-stage67-test-results",
+      "id": 12706849149,
+      "url": "https://github.com/2391552910-coder/da-listed-company-self-discipline-evaluation/actions/runs/40443808735/artifacts/12706849149"
+    },
+    {
+      "name": "frontend-production",
+      "id": 12706819801,
+      "url": "https://github.com/2391552910-coder/da-listed-company-self-discipline-evaluation/actions/runs/40443808735/artifacts/12706819801"
+    }
+  ]
+}

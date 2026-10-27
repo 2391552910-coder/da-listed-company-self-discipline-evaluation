@@ -58,3 +58,6 @@ python docs/stage1/audit_baseline.py --output docs/stage1/baseline-audit.json
 该命令只解析源码，并隔离执行两个方法以复现已确认缺陷；不启动数据库、不加载模型、不调用外部 API。历史基线为 `cdd17fdd95bd01e658f6931007d62c5b352087a5`。业务修复后，缺陷复现结果允许变化，不应将此审计脚本作为要求缺陷继续存在的回归测试。
 
 阶段 2 的启动、诊断、依赖和已验证范围见 [阶段 2 使用说明](docs/stage2/README.md)。
+
+
+首页新增[研究数据看板](docs/frontend/dashboard-insights.md)：任务环图、四维来源覆盖切换和双源资料构成。未连接后端时可显式预览带演示标记的图表，不将演示数据写入真实统计或报告。
