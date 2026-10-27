@@ -1,5 +1,9 @@
 <template>
   <div class="page-shell">
+    <section class="keynote-hero" aria-label="双源评价工作空间">
+      <div class="hero-copy"><h1>从原文出发。<br>让评价有据可循。</h1><p>连接年报披露与法规依据，在每一次运行中保存证据、结论与限制。</p><div class="hero-actions"><el-button type="primary" @click="$router.push(stepTarget('/evaluations/new'))">创建评价</el-button><el-button @click="$router.push(stepTarget('/documents'))">管理双源文档</el-button></div></div>
+      <div class="hero-stage"><p class="hero-stage-title">双源评价流程</p><div class="source-scene" aria-hidden="true"><div class="source-sheet"><SceneIcon name="document" /><span>公司年报</span></div><span class="scene-link" /><div class="scene-core"><SceneIcon name="layers" /></div><span class="scene-link" /><div class="source-sheet"><SceneIcon name="report" /><span>法规依据</span></div></div><div class="hero-tabs" role="tablist" aria-label="了解评价流程"><button v-for="(item,index) in scenes" :id="'scene-tab-'+index" :key="item.title" type="button" role="tab" :aria-selected="sceneIndex===index" aria-controls="scene-description" @click="sceneIndex=index" @keydown.right.prevent="selectScene(index+1)" @keydown.left.prevent="selectScene(index-1)">{{ item.title }}</button></div><transition name="detail-swap" mode="out-in"><p id="scene-description" class="hero-explanation" role="tabpanel" :aria-labelledby="'scene-tab-'+sceneIndex" :key="sceneIndex">{{ scenes[sceneIndex].text }}</p></transition></div>
+    </section>
     <div class="page-heading"><div><h2>主体自律评价研究工作台</h2><p class="muted">从双源文档到可回放评价，再到固定版本报告。</p></div><el-button :loading="loading" @click="load">刷新统计</el-button></div>
     <el-card class="section">
       <el-form :inline="true" @submit.prevent="applyScope">
@@ -45,10 +49,14 @@
 <script setup>
 import { computed, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import SceneIcon from '../components/SceneIcon.vue'
 import CompanySelect from '../components/CompanySelect.vue'
 import request from '../api/request'
 import { modeName, short, statusName, statusType } from '../utils/presentation'
 
+const sceneIndex=ref(0)
+const scenes=[{title:'年报披露',text:'限定公司与报告年度，保存文档版本、物理页码和原文字符位置。'},{title:'法规依据',text:'从共享法规库检索依据，保留版本与时点信息，具体适用性仍需核对。'},{title:'评价结论',text:'逐题保存回答、引用和资料缺口。模型判断、机械校验与人工复核分别记录。'}]
+function selectScene(index){sceneIndex.value=(index+scenes.length)%scenes.length;document.getElementById('scene-tab-'+sceneIndex.value)?.focus()}
 const route=useRoute(),router=useRouter(),companyId=ref(null),year=ref(null),scope=ref({company_id:null,year:null})
 const loading=ref(false),error=ref(''),invalidScope=ref(false),dashboard=ref(null),profiles=ref([]),profileError=ref(false)
 let alive=true,sequence=0
@@ -107,5 +115,5 @@ watch(()=>[route.query.company_id,route.query.year],()=>{
 onUnmounted(()=>{alive=false;sequence++})
 </script>
 <style scoped>
-.stat-number{font-size:32px;color:#173a65;font-weight:650}.summary-stats{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:18px}.task-stats{display:flex;flex-wrap:wrap;gap:18px}.task-stats>span{font-size:14px}.workflow{display:grid;grid-template-columns:repeat(4,1fr);gap:20px}.workflow-step{padding:8px 12px}.workflow-step h3{font-size:15px}.step-number{display:inline-flex;width:29px;height:29px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:50%;align-items:center;justify-content:center;color:#2563eb;font-size:13px}.workflow-step p{min-height:52px}.model-profile{font-size:13px;overflow-wrap:anywhere}@media(max-width:1100px){.summary-stats{grid-template-columns:repeat(3,minmax(0,1fr))}}@media(max-width:1000px){.workflow{grid-template-columns:repeat(2,1fr)}}@media(max-width:600px){.summary-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.workflow{grid-template-columns:1fr}.workflow-step p{min-height:auto}}
+.stat-number{font-size:36px;color:#1d1d1f;font-weight:600;letter-spacing:-1.5px;font-variant-numeric:tabular-nums}.summary-stats{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:18px}.task-stats{display:flex;flex-wrap:wrap;gap:18px}.task-stats>span{font-size:14px}.workflow{display:grid;grid-template-columns:repeat(4,1fr);gap:20px}.workflow-step{padding:8px 12px}.workflow-step h3{font-size:15px}.step-number{display:inline-flex;width:29px;height:29px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:50%;align-items:center;justify-content:center;color:#2563eb;font-size:13px}.workflow-step p{min-height:52px}.model-profile{font-size:13px;overflow-wrap:anywhere}@media(max-width:1100px){.summary-stats{grid-template-columns:repeat(3,minmax(0,1fr))}}@media(max-width:1000px){.workflow{grid-template-columns:repeat(2,1fr)}}@media(max-width:600px){.summary-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.workflow{grid-template-columns:1fr}.workflow-step p{min-height:auto}}
 </style>
