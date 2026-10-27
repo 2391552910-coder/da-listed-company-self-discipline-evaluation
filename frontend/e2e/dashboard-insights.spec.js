@@ -22,6 +22,7 @@ test('unavailable statistics stay unknown; explicit demo is labelled and respons
  await expect(bars).toContainText('83%')
  await page.getByRole('button',{name:'年报入选',exact:true}).click()
  await expect(bars).toContainText('100%')
+ await page.getByTestId('dashboard-insights').screenshot({path:'../test-results/browser-insights-panel.png'})
  await page.screenshot({path:'../test-results/browser-insights-demo.png',fullPage:true})
  await page.setViewportSize({width:375,height:812})
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBeTruthy()
