@@ -1,0 +1,23 @@
+name: Offline local application images
+on:
+  workflow_dispatch:
+  push:
+    branches: [chore/local-backend-images-20261027]
+jobs:
+  images:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t dalun-backend:local-integration backend
+      - run: docker build -t dalun-frontend:local-integration frontend
+      - name: Save application images without private configuration
+        run: |
+          mkdir -p local-images
+          docker save dalun-backend:local-integration dalun-frontend:local-integration | gzip -1 > local-images/dalun-application-images.tar.gz
+          sha256sum local-images/dalun-application-images.tar.gz > local-images/SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dalun-local-application-images
+          path: local-images/
+          retention-days: 7

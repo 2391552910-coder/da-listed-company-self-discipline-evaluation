@@ -90,6 +90,9 @@ jobs:
           python-version: "3.12"
           cache: pip
           cache-dependency-path: backend/requirements-*.txt
+      - name: Verify Windows Compose fallback and argument safety
+        shell: powershell
+        run: ./scripts/test-compose-command.ps1
       - run: python -m pip install -r requirements-test.txt
         working-directory: backend
       - run: python -m pytest tests -q --basetemp=C:/dalun-tests --junitxml=../test-results/windows-stage67.xml
