@@ -1,0 +1,63 @@
+{
+  "schema_version": "frontend-design-validation-v1",
+  "status": "passed",
+  "source_commit": "ad813aedd9262e08ff60d7c0645a5bf7206ca39d",
+  "merge_commit": "0801bfe62e363dcd06c0677361e72dcdaa404a14",
+  "ci_run": 40437747791,
+  "ci_url": "https://github.com/2391552910-coder/da-listed-company-self-discipline-evaluation/actions/runs/40437747791",
+  "backend_linux": {
+    "passed": 507,
+    "elapsed_seconds": 160.34
+  },
+  "backend_windows": {
+    "passed": 503,
+    "skipped_postgresql_covered_on_linux": 4,
+    "elapsed_seconds": 338.95
+  },
+  "production_build": {
+    "passed": true,
+    "elapsed_seconds": 6.91
+  },
+  "browser": {
+    "passed": 9,
+    "channel": "runner-provided Google Chrome",
+    "data_kind": "synthetic acceptance fixtures",
+    "new_checks": [
+      "desktop navigation and persistent reduced motion",
+      "keyboard scene tabs",
+      "375px no body horizontal overflow",
+      "OS reduced motion"
+    ],
+    "manually_reviewed_screenshots": [
+      "browser-design-overview.png",
+      "browser-design-mobile.png"
+    ],
+    "cjk_font": "offline PyMuPDF CJK fallback, injected only in CI browser acceptance"
+  },
+  "deployment": "passed",
+  "postgresql_backup_restore": "passed",
+  "skill": {
+    "name": "frontend-design",
+    "source": "https://github.com/anthropics/skills/tree/dbd4588f9e1033efb41dad4bef2f7947c8993d44/skills/frontend-design",
+    "license": "Apache-2.0",
+    "installation": "project .agents/skills/frontend-design",
+    "personal_installation": "not completed; authentication unavailable"
+  },
+  "artifacts": [
+    {
+      "name": "windows-stage67-test-results",
+      "id": 12705385503,
+      "url": "https://github.com/2391552910-coder/da-listed-company-self-discipline-evaluation/actions/runs/40437747791/artifacts/12705385503"
+    },
+    {
+      "name": "stage67-test-results",
+      "id": 12704873315,
+      "url": "https://github.com/2391552910-coder/da-listed-company-self-discipline-evaluation/actions/runs/40437747791/artifacts/12704873315"
+    },
+    {
+      "name": "compose-stage67-test-results",
+      "id": 12704678463,
+      "url": "https://github.com/2391552910-coder/da-listed-company-self-discipline-evaluation/actions/runs/40437747791/artifacts/12704678463"
+    }
+  ]
+}

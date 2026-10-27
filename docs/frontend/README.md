@@ -17,3 +17,11 @@
 ## 验证
 
 保持既有7条浏览器业务验收，新增桌面导航/动效偏好持久化、系统减少动效与375px布局验收。执行结果以对应PR的CI为准。模型路径沿用显式合成验收资料，不代表真实模型效果。
+
+## 最终验收
+
+代码已通过[PR #6](https://github.com/2391552910-coder/da-listed-company-self-discipline-evaluation/pull/6)合并main。验证源 `ad813aedd9262e08ff60d7c0645a5bf7206ca39d`，合并提交 `0801bfe62e363dcd06c0677361e72dcdaa404a14`，CI run 40437747791 全部成功：Linux507、Windows503（4项PG由Linux覆盖），Vue生产构建6.91秒，Chrome9条浏览器测试通过。容器部署、重启持久化和PG冷备恢复均通过。
+
+已人工检查桌面与375px中文截图，未见主要内容裁切、横向页面溢出或中文缺字；窄屏宽表格通过表内横向滚动阅读。截图为合成验收数据。CI使用runner预装Chrome；中文截图使用既有PyMuPDF中的离线字体补齐runner的CJK显示，字体文件和临时CSS仅供验收，不进入正式构建源码。
+
+[浏览器截图与报告制品](https://github.com/2391552910-coder/da-listed-company-self-discipline-evaluation/actions/runs/40437747791/artifacts/12704873315)。详细数据见[test-summary.json](test-summary.json)。
