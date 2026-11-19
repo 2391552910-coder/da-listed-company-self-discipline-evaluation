@@ -1,0 +1,32 @@
+# Add this file to compose.yml only when the optional service is wanted.
+services:
+  backend:
+    environment:
+      MEASUREMENT_SERVICE_URL: http://measurement:8100
+    networks: [default, measurement_private]
+  measurement:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.measurement
+      args:
+        PYTHON_BASE_IMAGE: ${DALUN_MEASUREMENT_BASE_IMAGE:-python:3.12-slim-bookworm}
+    image: ${DALUN_MEASUREMENT_IMAGE:-dalun-measurement:local}
+    environment:
+      MEASUREMENT_DATA_DIR: /measurement-data
+    volumes:
+      - type: bind
+        source: ${DALUN_MEASUREMENT_DATA_DIR:-./deploy/measurement-data}
+        target: /measurement-data
+        read_only: true
+    networks: [measurement_private]
+    restart: unless-stopped
+    init: true
+    healthcheck:
+      test: ["CMD", "python", "-c", "from urllib.request import urlopen; urlopen('http://127.0.0.1:8100/health/live',timeout=2).close()"]
+      interval: 15s
+      timeout: 5s
+      retries: 4
+
+networks:
+  measurement_private:
+    internal: true

@@ -14,7 +14,7 @@ const routes = [
   { path:'/report', redirect:'/reports-export' },
   { path:'/import', redirect:'/documents' },
   { path:'/evidence', redirect:'/evaluations' },
-  { path:'/index', redirect:'/' },
+  { path:'/index', component:()=>import('../views/IndexResult.vue') },
   { path:'/:pathMatch(.*)*', component:()=>import('../views/NotFound.vue') },
 ]
 export default createRouter({history:createWebHistory(),routes,scrollBehavior:()=>({top:0})})

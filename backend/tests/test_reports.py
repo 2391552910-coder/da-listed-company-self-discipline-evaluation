@@ -63,7 +63,7 @@ def test_html_escapes_all_model_and_source_text_and_has_no_external_assets():
     text = data.decode("utf-8")
     assert "<script>" not in text and "&lt;script&gt;" in text
     assert "Content-Security-Policy" in text and "default-src 'none'" in text
-    assert "指数结果未接入" in text and "尚未人工复核" in text
+    assert "独立测度，详见主体自律指数模块" in text and "尚未人工复核" in text
     assert "null" in text and '已完成题数：0' in text
     assert "/api/v1/document-versions/11111111-1111-4111-8111-111111111111/file#page=12" in text
     assert manifest["embedded_snapshot_sha256"] == sha(dump(evaluation).encode("utf-8"))

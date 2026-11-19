@@ -8,7 +8,7 @@
         <div class="stats"><span>状态：{{ statusName(run.status) }}</span><span>运行：{{ run.id }}</span></div>
         <p class="muted hash">冻结结果 SHA256：{{ run.snapshot_sha256 || '无结果快照' }}</p>
         <el-alert v-if="run.status!=='succeeded'" title="当前运行并非完整成功。允许导出时，报告将保留技术失败、证据不足与缺失维度的说明。" type="warning" :closable="false" />
-        <el-alert title="第三章指数结果尚未接入。报告不会以 0 分代替缺失结果。" type="info" :closable="false" class="section" />
+        <p class="muted section">本报告导出该运行的评价正文和证据。<router-link to="/index">查询第三章主体自律指数</router-link></p>
         <div class="actions section"><el-button data-testid="report-create-html" type="primary" :loading="exporting==='html'" :disabled="!canExport || !!exporting" @click="createExport('html')">生成 HTML 报告</el-button><el-button data-testid="report-create-pdf" type="primary" plain :loading="exporting==='pdf'" :disabled="!canExport || !!exporting" @click="createExport('pdf')">生成中文 PDF</el-button><router-link :to="'/evaluations/'+run.id">查看正文与证据</router-link></div>
       </template>
     </el-card>

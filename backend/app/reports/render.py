@@ -9,10 +9,10 @@ import re
 
 from app.documents.common import DomainError, dump, sha
 
-RENDERER_VERSION = "evaluation-report-v1"
+RENDERER_VERSION = "evaluation-report-v2"
 TITLE = "上市公司自律性评价报告"
 NOTICE = ("本报告为基于冻结年报与法规证据的模型辅助文本评价。引用及逐字引文校验仅验证结构、位置与文本一致性，"
-          "不等于语义支持、法律适用性或人工复核确认。第三章 AHP-Transformer 指数结果未接入，不生成数值评分。")
+          "语义支持、法律适用性和人工复核状态另行记录。第三章主体自律指数通过独立测度模块查询。")
 SOURCE_NOTICE = ("原件可通过证据版本 ID、物理页与字符区间回到系统核对。HTML 中的原件链接需在系统内预览打开；"
                  "离线报告不内嵌原始年报或法规文件。")
 STATUSES = {
@@ -75,7 +75,7 @@ def blocks(evaluation, snapshot_sha256):
         ("运行状态", status(evaluation.get("status"))),
         ("评价快照 SHA256", evaluation.get("snapshot_sha256")),
         ("导出冻结快照 SHA256", snapshot_sha256),
-        ("第三章指数", "指数结果未接入"),
+        ("第三章指数", "独立测度，详见主体自律指数模块"),
     ):
         yield "body", label + "：" + _text(item)
     summary = snapshot.get("summary") or {}

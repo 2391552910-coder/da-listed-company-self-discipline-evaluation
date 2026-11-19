@@ -191,8 +191,10 @@ def create_app(settings=None):
     reports=Reports(documents)
     from app.experiments.service import Experiments
     experiments=Experiments(documents)
+    from app.measurement_gateway import MeasurementGateway
+    measurement=MeasurementGateway(documents.settings.measurement_url)
     app=FastAPI(title="上市公司主体自律评价系统",version="0.8.0",
-                description="双源评价、受预算约束的Agent、实验对照与可追溯交付；第三章指数结果待接入")
+                description="双源评价、实验对照、可追溯报告与可选指数测度")
     app.state.documents=documents
     app.state.contexts=contexts
     app.state.evaluations=evaluations
@@ -205,6 +207,15 @@ def create_app(settings=None):
 
     def ok(data):
         return {"code":0,"message":"ok","data":data}
+
+    @app.get("/api/v1/measurement/status")
+    def measurement_status():
+        return ok(measurement.status())
+
+    @app.get("/api/v1/measurement/results/{stock_code}")
+    def measurement_result(stock_code: str, report_year: int = Query(ge=1990, le=2100)):
+        from app.documents.common import code
+        return ok(measurement.result(code(stock_code), report_year))
 
     @app.get("/health/live")
     def live():

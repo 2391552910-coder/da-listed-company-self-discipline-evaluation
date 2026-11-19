@@ -535,7 +535,7 @@ class Evaluations:
                 "本汇总按单题执行状态与证据不足状态归并，未另行生成综合结论或数值评分。",
                 "引用编号、逐字摘录和原文定位通过仅代表机械校验，不能证明语义支持或法规适用。",
                 "max_observed_tokens是已报告用量的停止阈值；一次已发送请求可能越过该值，用量未知时停止后续调用。",
-                "第三章AHP-Transformer指数尚未接入，本运行不计算该指数。"]}
+                "第三章主体自律指数通过独立测度模块查询。"]}
 
     @staticmethod
     def _result(snapshot, digest, recovered):
