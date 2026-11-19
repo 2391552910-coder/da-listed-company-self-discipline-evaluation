@@ -48,6 +48,7 @@ class Settings:
     llm_model: str = ""
     llm_temperature: float | None = None
     llm_json_mode: bool = True
+    measurement_url: str = ""
 
     @classmethod
     def from_env(cls):
@@ -69,4 +70,5 @@ class Settings:
             os.getenv("LLM_MODEL", ""),
             float(os.environ["LLM_TEMPERATURE"]) if os.getenv("LLM_TEMPERATURE") else None,
             os.getenv("LLM_JSON_MODE", "true").lower() == "true",
+            os.getenv("MEASUREMENT_SERVICE_URL", ""),
         )

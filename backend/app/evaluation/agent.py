@@ -199,6 +199,7 @@ class AgentRunner:
         retrieval = self.request["retrieval"]
         found = self.service.indexes.search(self.request["index_id"], decision["query"],
             self.request["stock_code"], self.request["report_year"],
+            method=retrieval.get("method"),
             annual_top_k=retrieval["annual_top_k"], regulation_top_k=retrieval["regulation_top_k"],
             temporal_filter=retrieval["temporal_filter"], target_date=self.question["declared_target_date"],
             target_date_role=self.question["target_date_role"], unknown_temporal=retrieval["unknown_temporal"],

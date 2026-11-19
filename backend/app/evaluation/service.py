@@ -14,6 +14,7 @@ from app.documents.service import required
 from app.evaluation.questions import normalize_questions, question_sets
 from app.evaluation.validation import validate_output
 from app.retrieval.context_builder import assemble_context
+from app.retrieval.methods import validate_method
 from app.retrieval.service import fence_job
 from app.retrieval.temporal import select_regulations
 from app.retrieval.token_budget import load_counter
@@ -104,9 +105,10 @@ class Evaluations:
             raise DomainError("INVALID_AGENT_CONFIG", "固定双源模式不接受Agent配置", 422)
         if retrieval is not None and not isinstance(retrieval, dict):
             raise DomainError("INVALID_EVALUATION_CONFIG", "retrieval须为对象", 422)
+        retrieval = {k: v for k, v in (retrieval or {}).items() if k != "method" or v is not None}
         if budget is not None and not isinstance(budget, dict):
             raise DomainError("INVALID_EVALUATION_CONFIG", "budget须为对象", 422)
-        if set(retrieval or {}) - set(RETRIEVAL_DEFAULTS) or set(budget or {}) - set(BUDGET_DEFAULTS):
+        if set(retrieval) - {*RETRIEVAL_DEFAULTS, "method"} or set(budget or {}) - set(BUDGET_DEFAULTS):
             raise DomainError("INVALID_EVALUATION_CONFIG", "未知检索或预算配置", 422)
         supplied_budget = budget or {}
         retrieval, budget = RETRIEVAL_DEFAULTS | (retrieval or {}), BUDGET_DEFAULTS | supplied_budget
@@ -145,6 +147,7 @@ class Evaluations:
             raise DomainError("MODEL_PROFILE_UNAVAILABLE", "模型档身份缺失", 503)
         _, tokenizer_identity = load_counter(retrieval["tokenizer_kind"], self.docs.settings)
         index, _, dataset, _ = self.indexes.validate(index_id)
+        validate_method(index["profile"], retrieval.get("method"))
         if not any(r["corpus_type"] == "annual_report" and r["stock_code"] == stock_code
                    and r["report_year"] == report_year for r in dataset["rows"]):
             raise DomainError("ANNUAL_SCOPE_EMPTY", "指定公司年度没有年报候选", 409)
@@ -331,6 +334,7 @@ class Evaluations:
         checkpoint("retrieving", question["key"])
         retrieval = request["retrieval"]
         found = self.indexes.search(request["index_id"], question["text"], request["stock_code"], request["report_year"],
+            method=retrieval.get("method"),
             annual_top_k=retrieval["annual_top_k"], regulation_top_k=retrieval["regulation_top_k"],
             temporal_filter=retrieval["temporal_filter"], target_date=question["declared_target_date"],
             target_date_role=question["target_date_role"], unknown_temporal=retrieval["unknown_temporal"],
@@ -531,7 +535,7 @@ class Evaluations:
                 "本汇总按单题执行状态与证据不足状态归并，未另行生成综合结论或数值评分。",
                 "引用编号、逐字摘录和原文定位通过仅代表机械校验，不能证明语义支持或法规适用。",
                 "max_observed_tokens是已报告用量的停止阈值；一次已发送请求可能越过该值，用量未知时停止后续调用。",
-                "第三章AHP-Transformer指数尚未接入，本运行不计算该指数。"]}
+                "第三章主体自律指数通过独立测度模块查询。"]}
 
     @staticmethod
     def _result(snapshot, digest, recovered):

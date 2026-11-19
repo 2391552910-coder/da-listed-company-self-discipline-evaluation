@@ -329,6 +329,8 @@ class Documents:
         return JobControl(self).finish(job_id,worker_id,result,error,status)
 
     def retry_payload(self,kind,payload,db):
+        if kind=="retrieval_bench":
+            return payload
         if kind not in {"context","evaluation"}:
             raise DomainError("RETRY_PAYLOAD_UNAVAILABLE","该类型缺少重试身份适配",409)
         from app.retrieval.service import Contexts

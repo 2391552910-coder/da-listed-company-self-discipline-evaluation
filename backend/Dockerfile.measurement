@@ -1,0 +1,10 @@
+ARG PYTHON_BASE_IMAGE=python:3.12-slim-bookworm
+FROM ${PYTHON_BASE_IMAGE}
+ENV PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1
+WORKDIR /app
+RUN pip install --no-cache-dir 'fastapi>=0.115,<1' 'uvicorn>=0.30,<1' \
+    && groupadd --gid 10002 measurement && useradd --uid 10002 --gid measurement measurement
+COPY app/measurement ./app/measurement
+USER measurement
+EXPOSE 8100
+CMD ["python", "-m", "uvicorn", "app.measurement.api:app", "--host", "0.0.0.0", "--port", "8100"]

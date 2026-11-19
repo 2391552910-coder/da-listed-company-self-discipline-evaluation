@@ -62,6 +62,9 @@ def query(directory,request_file,response_file,reference_root=None):
     dataset,_=read_dataset(directory,manifest)
     request=json.loads(Path(request_file).read_bytes())
     chunks=chunks_from(dataset["rows"])
+    method=request.get("method")
+    from app.retrieval.methods import SelectedRetriever, validate_method
+    validate_method(manifest["profile"],method)
     from app.retrieval.temporal import select_regulations
     selected_regulations,temporal_audit=select_regulations(
         [r for r in dataset["rows"] if r["corpus_type"]=="regulation"],
@@ -69,7 +72,7 @@ def query(directory,request_file,response_file,reference_root=None):
         target_date_role=request.get("target_date_role"),unknown_policy=request.get("unknown_temporal","retain"))
     eligible_regulation_ids={r["id"] for r in selected_regulations}
     retriever=None
-    if manifest["profile"]=="qwen_cuda":
+    if manifest["profile"]=="qwen_cuda" and method not in {"bm25", "bm25_rerank"}:
         import numpy as np
         from app.research_adapter.vendor.retrieval.hybrid import HybridRetriever
         from app.research_adapter.vendor.retrieval.reranker import Reranker
@@ -80,15 +83,29 @@ def query(directory,request_file,response_file,reference_root=None):
             raise ValueError("Vector shape/dtype mismatch")
         if not np.isfinite(vectors).all() or not np.allclose(np.linalg.norm(vectors,axis=1),1,atol=.02):
             raise ValueError("Vectors must be finite and normalized")
-        rr=Reranker(revision=RERANKER_REVISION,local_files_only=True) if dataset["config"]["rerank"] else None
-        retriever=HybridRetriever(chunks,document_vectors=vectors,reranker=rr,vector_weight=.7,
-                                   fusion="weighted",rerank_pool_factor=4,**dense_kwargs())
+        if method is None:
+            rr=Reranker(revision=RERANKER_REVISION,local_files_only=True) if dataset["config"]["rerank"] else None
+            retriever=HybridRetriever(chunks,document_vectors=vectors,reranker=rr,vector_weight=.7,
+                                       fusion="weighted",rerank_pool_factor=4,**dense_kwargs())
+            dense=retriever.dense
+        else:
+            from app.research_adapter.vendor.retrieval.dense import DenseRetriever
+            from app.research_adapter.vendor.retrieval.bm25 import BM25Retriever
+            dense=DenseRetriever(chunks,precomputed_vectors=vectors,**dense_kwargs())
+            rr=Reranker(revision=RERANKER_REVISION,local_files_only=True) if method=="rrf_rerank" else None
+            retriever=SelectedRetriever(method,BM25Retriever(chunks),dense,rr)
         # Frozen identity: requested model alone is insufficient.
-        if retriever.dense.encoding_metadata!=manifest["encoder_identity"]:
+        if dense.encoding_metadata!=manifest["encoder_identity"]:
             raise ValueError("Encoder identity mismatch")
     else:
         from app.research_adapter.vendor.retrieval.bm25 import BM25Retriever
         retriever=BM25Retriever(chunks)
+        if method is not None:
+            rr=None
+            if method=="bm25_rerank":
+                from app.research_adapter.vendor.retrieval.reranker import Reranker
+                rr=Reranker(revision=RERANKER_REVISION,local_files_only=True)
+            retriever=SelectedRetriever(method,retriever,reranker=rr)
     pools={"annual_report":[c for c in chunks if c.meta["corpus_type"]=="annual_report" and
                            c.meta["stock_code"]==request["stock_code"] and c.meta["report_year"]==request["report_year"]],
            "regulation":[c for c in chunks if c.meta["corpus_type"]=="regulation" and c.chunk_id in eligible_regulation_ids]}
@@ -96,7 +113,7 @@ def query(directory,request_file,response_file,reference_root=None):
         raise ValueError("Empty annual scope")
     result={"annual_report":[],"regulation":[],"traces":{},"temporal_filter_audit":temporal_audit}
     original=None
-    if reference_root:
+    if reference_root and method is None:
         sys.path.insert(0,str(Path(reference_root).resolve()))
         # Share already-loaded frozen encoder/weights: this tests ranking adapter parity, not independent model accuracy.
         from src.retrieval.hybrid import HybridRetriever as Original
@@ -108,7 +125,12 @@ def query(directory,request_file,response_file,reference_root=None):
     parity=[]
     for role,pool in pools.items():
         top_k=request.get("annual_top_k" if role=="annual_report" else "regulation_top_k",request["top_k"])
-        if manifest["profile"]=="qwen_cuda":
+        if method is not None:
+            hits=retriever.search(request["query"],pool,top_k,request["candidate_k"])
+            result["traces"][role]={"method":method,"candidate_k":request["candidate_k"],
+                "eligible_pool_count":len(pool),"final_rankings":[
+                {"chunk_id":c.chunk_id,"score":float(s)} for c,s in hits]}
+        elif manifest["profile"]=="qwen_cuda":
             from app.research_adapter.vendor.retrieval.search_trace import SearchTrace
             trace=SearchTrace(request["query"],top_k,[c.chunk_id for c in pool],"dual_scoped_hybrid")
             hits=retriever.search(request["query"],top_k,pool=pool,trace=trace)
