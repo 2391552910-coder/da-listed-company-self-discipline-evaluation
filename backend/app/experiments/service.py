@@ -16,6 +16,7 @@ from app.documents.service import required
 from app.evaluation.questions import normalize_questions
 from app.evaluation.service import Evaluations, SYSTEM_PROMPT, PROMPT_VERSION, RETRIEVAL_DEFAULTS, BUDGET_DEFAULTS
 from app.experiments.comparison import compare_runs
+from app.retrieval.methods import validate_method
 from app.retrieval.temporal import select_regulations
 from app.retrieval.token_budget import load_counter
 
@@ -86,9 +87,10 @@ class Experiments:
             raise DomainError("INVALID_EXPERIMENT", "模式须为不重复的dual_fixed/dual_agent", 422)
         if retrieval is not None and not isinstance(retrieval, dict):
             raise DomainError("INVALID_EXPERIMENT", "retrieval须为对象", 422)
+        retrieval = {k: v for k, v in (retrieval or {}).items() if k != "method" or v is not None}
         if budget is not None and not isinstance(budget, dict):
             raise DomainError("INVALID_EXPERIMENT", "budget须为对象", 422)
-        if set(retrieval or {}) - set(RETRIEVAL_DEFAULTS) or set(budget or {}) - set(BUDGET_DEFAULTS):
+        if set(retrieval) - {*RETRIEVAL_DEFAULTS, "method"} or set(budget or {}) - set(BUDGET_DEFAULTS):
             raise DomainError("INVALID_EXPERIMENT", "未知检索/预算字段", 422)
         retrieval = RETRIEVAL_DEFAULTS | (retrieval or {})
         budget = BUDGET_DEFAULTS | {"max_model_calls": 32} | (budget or {})
@@ -132,6 +134,7 @@ class Experiments:
         cases = []
         for case in public["cases"]:
             index, _, dataset, _ = self.evaluations.indexes.validate(case["index_id"])
+            validate_method(index["profile"], public["retrieval"].get("method"))
             if not any(r["corpus_type"] == "annual_report" and r["stock_code"] == case["stock_code"]
                        and r["report_year"] == case["report_year"] for r in dataset["rows"]):
                 raise DomainError("ANNUAL_SCOPE_EMPTY", "实验case指定公司年度无年报", 409)

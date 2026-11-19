@@ -60,6 +60,7 @@ class EvaluationQuestionIn(StrictModel):
 
 
 class EvaluationRetrievalIn(StrictModel):
+    method: Literal["bm25", "dense", "rrf", "bm25_rerank", "rrf_rerank"] | None = None
     annual_top_k:StrictInt=Field(5,ge=1,le=20)
     regulation_top_k:StrictInt=Field(5,ge=1,le=20)
     max_reference_tokens:StrictInt=Field(6000,ge=1,le=32000)
@@ -116,6 +117,26 @@ class ExperimentIn(StrictModel):
     agent:AgentIn|None=None
     model:str|None=Field(None,min_length=1,max_length=160)
     max_total_model_calls:StrictInt=Field(128,ge=1,le=128)
+
+
+class RetrievalBenchmarkCaseIn(StrictModel):
+    key: str = Field(min_length=1, max_length=64)
+    dimension: Literal["D1", "D2", "D3", "D4"]
+    query: str = Field(min_length=1, max_length=4000)
+    stock_code: str
+    report_year: StrictInt = Field(ge=1990, le=2100)
+    relevant_chunk_ids: list[str] = Field(min_length=1, max_length=200)
+    irrelevant_chunk_ids: list[str] = Field(default_factory=list, max_length=200)
+
+
+class RetrievalBenchmarkIn(StrictModel):
+    name: str = Field(min_length=1, max_length=160)
+    index_id: str = Field(min_length=1, max_length=64)
+    methods: list[Literal["bm25", "dense", "rrf", "bm25_rerank", "rrf_rerank"]] = Field(min_length=1, max_length=5)
+    top_k: StrictInt = Field(10, ge=1, le=20)
+    candidate_k: StrictInt = Field(50, ge=1, le=100)
+    max_runtime_seconds: StrictInt = Field(1800, ge=1, le=7200)
+    cases: list[RetrievalBenchmarkCaseIn] = Field(min_length=1, max_length=100)
 
 
 class ExperimentRatingIn(StrictModel):
@@ -375,6 +396,28 @@ def create_app(settings=None):
     @app.post("/api/v1/retrieval/search")
     def search(payload:SearchIn):
         return ok(indexes.search(**payload.model_dump()))
+
+    @app.post("/api/v1/retrieval-benchmarks", status_code=202)
+    def create_retrieval_benchmark(payload: RetrievalBenchmarkIn, idempotency_key: str | None = Header(None)):
+        from app.experiments.retrieval_benchmark import RetrievalBenchmark
+        return ok(RetrievalBenchmark(documents).enqueue(payload.model_dump(), idempotency_key))
+
+    @app.get("/api/v1/retrieval-benchmarks/{job_id}")
+    def get_retrieval_benchmark(job_id: str):
+        from app.experiments.retrieval_benchmark import RetrievalBenchmark
+        return ok(RetrievalBenchmark(documents).get(job_id))
+
+    @app.get("/api/v1/retrieval-benchmarks/{job_id}/report")
+    def export_retrieval_benchmark(job_id: str, format: Literal["md", "csv", "json"] = "md"):
+        from fastapi.responses import Response
+        from app.experiments.retrieval_benchmark import RetrievalBenchmark, report
+        job = RetrievalBenchmark(documents).get(job_id)
+        if not job["result"]:
+            raise DomainError("BENCHMARK_REPORT_UNAVAILABLE", "任务尚未生成报告，请查看运行状态", 409)
+        content, media_type = report(job["result"], format)
+        return Response(content, media_type=media_type, headers={
+            "Content-Disposition": f'attachment; filename="retrieval-{job["id"]}.{format}"',
+            "X-Content-Type-Options": "nosniff"})
 
     @app.get("/api/v1/experiments/rubrics")
     def experiment_rubrics():

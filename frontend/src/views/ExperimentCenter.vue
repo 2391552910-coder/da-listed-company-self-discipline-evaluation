@@ -3,6 +3,7 @@
     <div class="page-heading"><div><h2>实验与对照</h2><p class="muted">冻结协议、独立运行、分开记录人工与自动评分</p></div><el-button :loading="loading" @click="load(true)">刷新</el-button></div>
     <el-alert title="运行完成不等于质量更高。固定与 Agent 的实际调用、证据和失败分别保留；未评分显示为空，历史缓存不冒充新实跑。" type="info" :closable="false" />
     <el-alert v-if="loadError" title="实验列表或基础资料暂不可读取。检查连接后点击刷新，服务器记录仍会保留。" type="warning" :closable="false" class="section" />
+    <RetrievalBenchmark :indexes="indexes" />
     <el-row :gutter="20" class="section">
       <el-col :xs="24" :lg="10"><el-card><template #header>创建冻结实验协议</template>
         <el-form label-position="top" @submit.prevent>
@@ -22,6 +23,13 @@
           <el-form-item label="生成模型"><el-select v-model="form.model" class="full"><el-option v-for="profile in profiles" :key="profile.name" :disabled="!profile.available" :value="profile.model || ''" :label="profile.model || '未配置'" /></el-select></el-form-item>
           <el-collapse>
             <el-collapse-item title="共同检索、模型与总调用预算" name="common">
+              <el-form-item label="问答检索方法">
+                <el-select v-model="retrieval.method" class="full">
+                  <el-option value="" label="索引默认策略" />
+                  <el-option v-for="(label,method) in retrievalMethods" :key="method" :value="method" :label="label"
+                    :disabled="method!=='bm25' && !allNeuralIndexes" />
+                </el-select>
+              </el-form-item>
               <el-form-item label="参考计数"><el-select data-testid="experiment-tokenizer" v-model="retrieval.tokenizer_kind" class="full"><el-option value="qwen3" label="Qwen3 冻结参考分词器" /><el-option value="utf8_diagnostic" label="UTF-8 字节诊断（不是 tokens）" /></el-select></el-form-item>
               <el-form-item label="每题参考计数上限"><el-input-number v-model="retrieval.max_reference_tokens" :min="1" :max="32000" :step="500" /></el-form-item>
               <el-form-item label="每个运行的最多模型调用"><el-input-number v-model="budget.max_model_calls" :min="minimumCalls" :max="40" /></el-form-item>
@@ -104,11 +112,15 @@ import { formatDate, modeName, pretty, short, statusName, statusType } from '../
 import { newRequestKey } from '../utils/idempotency'
 import ScoreTable from '../components/ScoreTable.vue'
 import CompanySelect from '../components/CompanySelect.vue'
+import RetrievalBenchmark from '../components/RetrievalBenchmark.vue'
 const route=useRoute(),router=useRouter(),indexes=ref([]),questionSets=ref([]),profiles=ref([]),rubrics=ref([])
 const experiments=ref([]),total=ref(0),page=ref(1),selected=ref(null),loading=ref(false),creating=ref(false),acting=ref(false),exporting=ref(null),pollError=ref(false),loadError=ref(false)
 const form=reactive({name:'',modes:['dual_fixed','dual_agent'],question_set_version:'four-dim-v1',model:'',max_total_model_calls:128})
 const cases=ref([{clientKey:newRequestKey(),key:'C1',index_id:'',stock_code:'',report_year:2024}]),scope=ref('single'),dimension=ref('D1'),question=ref('')
-const retrieval=reactive({annual_top_k:5,regulation_top_k:5,max_reference_tokens:6000,tokenizer_kind:'qwen3',temporal_filter:false,unknown_temporal:'retain'})
+const retrieval=reactive({method:'',annual_top_k:5,regulation_top_k:5,max_reference_tokens:6000,tokenizer_kind:'qwen3',temporal_filter:false,unknown_temporal:'retain'})
+const retrievalMethods={bm25:'BM25',dense:'向量检索',rrf:'BM25 + 向量（RRF）',bm25_rerank:'BM25 + 重排',rrf_rerank:'BM25 + 向量（RRF）+ 重排'}
+const allNeuralIndexes=computed(()=>cases.value.every(item=>indexes.value.some(index=>index.id===item.index_id && index.profile==='qwen_cuda')))
+watch(allNeuralIndexes,available=>{if(!available && retrieval.method!=='bm25')retrieval.method=''})
 const budget=reactive({max_model_calls:32,max_observed_tokens:80000,max_runtime_seconds:3600,max_output_tokens:8000,request_timeout_seconds:600}),agent=reactive({max_rounds:1,max_supplemental_calls:4,allow_revision:true})
 const selectedSet=computed(()=>questionSets.value.find(row=>row.version===form.question_set_version)),dimensions=computed(()=>selectedSet.value?.dimensions || [])
 const minimumCalls=computed(()=>(scope.value==='single' ? 1 : selectedSet.value?.questions?.length || 4)*(form.modes.includes('dual_agent') ? (Number.isInteger(agent.max_rounds) ? agent.max_rounds : 1)+2+Number(agent.allow_revision) : 1))
@@ -128,7 +140,7 @@ watch(minimumCalls,value=>{if(budget.max_model_calls<value)budget.max_model_call
 watch(reservedCalls,value=>{if(form.max_total_model_calls<value)form.max_total_model_calls=Math.min(128,value)})
 async function load(manual=false){if(manual)pollError.value=false;loading.value=true;loadError.value=false;const sequence=++listSequence;try{const responses=await Promise.all([request.get('/indexes'),request.get('/question-sets'),request.get('/model-profiles'),request.get('/experiments/rubrics'),request.get('/experiments',{params:{page:page.value,page_size:10}})]);if(!alive || sequence!==listSequence)return;indexes.value=responses[0].data;questionSets.value=responses[1].data.items;profiles.value=responses[2].data.items;rubrics.value=responses[3].data.items;experiments.value=responses[4].data.items;total.value=responses[4].data.total;if(!form.model)form.model=profiles.value.find(row=>row.available)?.model || '';await loadSelected()}catch{if(sequence===listSequence)loadError.value=true}finally{if(sequence===listSequence)loading.value=false}}
 async function loadSelected(){clearTimeout(timer);const id=String(route.query.experiment_id || ''),sequence=++selectionSequence;if(!id){selected.value=null;return}try{const response=await request.get('/experiments/'+encodeURIComponent(id));if(!alive || sequence!==selectionSequence)return;selected.value=response.data;pollError.value=false;if(activeExperiment.value)timer=setTimeout(()=>loadSelected(),3000)}catch{if(sequence===selectionSequence)pollError.value=true}}
-async function createExperiment(){if(!canCreate.value)return;const payload={name:form.name.trim(),cases:cases.value.map(({clientKey,...item})=>({...item,key:item.key.trim()})),modes:[...form.modes],question_set_version:form.question_set_version,questions:scope.value==='single' ? [{key:'experiment-1',dimension:dimension.value,text:question.value.trim()}] : null,retrieval:{...retrieval},budget:{...budget},agent:{...agent},model:form.model || null,max_total_model_calls:form.max_total_model_calls};const pending=keyFor('create',payload);creating.value=true;try{const response=await request.post('/experiments',payload,{headers:{'Idempotency-Key':pending.key}});pendingKeys.delete(pending.signature);ElMessage.success('实验协议已冻结，运行任务已创建');await router.push({path:'/experiments',query:{experiment_id:response.data.id}});await load()}finally{creating.value=false}}
+async function createExperiment(){if(!canCreate.value)return;const payload={name:form.name.trim(),cases:cases.value.map(({clientKey,...item})=>({...item,key:item.key.trim()})),modes:[...form.modes],question_set_version:form.question_set_version,questions:scope.value==='single' ? [{key:'experiment-1',dimension:dimension.value,text:question.value.trim()}] : null,retrieval:{...retrieval,method:retrieval.method || null},budget:{...budget},agent:form.modes.includes('dual_agent') ? {...agent} : null,model:form.model || null,max_total_model_calls:form.max_total_model_calls};const pending=keyFor('create',payload);creating.value=true;try{const response=await request.post('/experiments',payload,{headers:{'Idempotency-Key':pending.key}});pendingKeys.delete(pending.signature);ElMessage.success('实验协议已冻结，运行任务已创建');await router.push({path:'/experiments',query:{...route.query,experiment_id:response.data.id}});await load()}finally{creating.value=false}}
 async function dispatch(){acting.value=true;try{await request.post('/experiments/'+encodeURIComponent(selected.value.id)+'/dispatch');await loadSelected();ElMessage.success('未排队单元已检查，原运行不会覆盖')}finally{acting.value=false}}
 async function cancel(){acting.value=true;try{await request.post('/experiments/'+encodeURIComponent(selected.value.id)+'/cancel');await loadSelected();ElMessage.success('取消请求已登记，已发出的模型请求消费仍可能发生')}finally{acting.value=false}}
 async function loadRatingRun(){const id=rating.run_id,sequence=++ratingSequence;rating.answer_id='';ratingAnswers.value=[];rating.supersedes_score_id=null;if(!id)return;const response=await request.get('/evaluations/'+encodeURIComponent(id));if(sequence===ratingSequence && id===rating.run_id)ratingAnswers.value=(response.data.answers || []).filter(answer=>answer.status==='succeeded' && answer.answer_text)}

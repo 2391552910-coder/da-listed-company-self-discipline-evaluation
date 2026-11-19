@@ -29,6 +29,13 @@ def work_once(documents,worker_id=None,health_callback=None):
         elif job["kind"]=="evaluation":
             from app.evaluation.service import Evaluations
             result=Evaluations(documents).build(payload,job["id"],worker_id,heartbeat)
+        elif job["kind"]=="retrieval_bench":
+            from app.experiments.retrieval_benchmark import RetrievalBenchmark
+            def progress(completed,total):
+                with documents.db.session() as db:
+                    db.execute("UPDATE t_job SET progress_json=? WHERE id=? AND status='running' AND lease_owner=?",
+                               (dump({"completed":completed,"total":total}),job["id"],worker_id))
+            result=RetrievalBenchmark(documents).run(payload,heartbeat,progress)
         else:
             raise DomainError("UNKNOWN_JOB_KIND","未知任务类型")
         heartbeat()

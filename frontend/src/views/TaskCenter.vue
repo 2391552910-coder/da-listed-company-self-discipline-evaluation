@@ -14,7 +14,7 @@
       </el-table>
       <el-pagination class="section" v-model:current-page="page" :total="total" :page-size="20" layout="total, prev, pager, next" @current-change="refresh(true)" />
     </el-card>
-    <el-card v-if="selected" class="section"><template #header>任务详情 · {{ selected.id }}</template><p class="muted">尝试次数 {{ selected.attempt_count ?? '见任务记录' }} · {{ statusName(selected.status) }}</p><p v-if="selected.parent_job_id" class="muted">重试来源 {{ selected.parent_job_id }}</p><pre class="json-panel">{{ pretty(selected) }}</pre></el-card>
+    <el-card v-if="selected" class="section"><template #header>任务详情 · {{ selected.id }}</template><p class="muted">尝试次数 {{ selected.attempt_count ?? '见任务记录' }} · {{ statusName(selected.status) }}</p><p v-if="selected.parent_job_id" class="muted">重试来源 {{ selected.parent_job_id }}</p><router-link v-if="selected.kind==='retrieval_bench'" :to="{path:'/experiments',query:{benchmark_id:selected.id}}">打开检索对照与报告</router-link><pre class="json-panel">{{ pretty(selected) }}</pre></el-card>
   </div>
 </template>
 <script setup>

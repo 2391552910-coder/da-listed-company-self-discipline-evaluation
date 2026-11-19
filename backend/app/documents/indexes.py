@@ -156,18 +156,23 @@ class Indexes:
 
     def search(self,index_id,query,stock_code,report_year,top_k=5,reference_root=None,*,
                annual_top_k=None,regulation_top_k=None,temporal_filter=False,target_date=None,
-               target_date_role=None,unknown_temporal="retain",heartbeat=None,deadline=None):
+               target_date_role=None,unknown_temporal="retain",heartbeat=None,deadline=None,
+               method=None,candidate_k=50):
         if not query.strip() or len(query)>4000 or not 1<=top_k<=20:
             raise DomainError("INVALID_QUERY","查询为空、过长或top_k超限",422)
         from app.documents.common import code
         stock_code=code(stock_code)
         index,manifest,dataset,base=self.validate(index_id)
+        from app.retrieval.methods import validate_method
+        validate_method(index["profile"],method)
         if not any(r["corpus_type"]=="annual_report" and r["stock_code"]==stock_code and r["report_year"]==report_year for r in dataset["rows"]):
             raise DomainError("ANNUAL_SCOPE_EMPTY","索引中没有指定公司年度年报",409)
         annual_top_k=top_k if annual_top_k is None else annual_top_k
         regulation_top_k=top_k if regulation_top_k is None else regulation_top_k
         if any(type(k) is not int or not 1<=k<=20 for k in (annual_top_k,regulation_top_k)):
             raise DomainError("INVALID_QUERY","候选数量不合法",422)
+        if method is not None and (type(candidate_k) is not int or not max(annual_top_k,regulation_top_k)<=candidate_k<=100):
+            raise DomainError("INVALID_QUERY","候选池须介于返回数量和100之间",422)
         from app.retrieval.temporal import select_regulations
         _,temporal_audit=select_regulations([r for r in dataset["rows"] if r["corpus_type"]=="regulation"],
             temporal_filter=temporal_filter,target_date=target_date,target_date_role=target_date_role,
@@ -175,12 +180,16 @@ class Indexes:
         request_id=uid()
         request_key=f"{base}/queries/{request_id}.json"
         response_key=f"{base}/queries/{request_id}.result.json"
-        self.docs.storage.write(request_key,dump({"query":query,"stock_code":stock_code,"report_year":report_year,"top_k":top_k,"annual_top_k":annual_top_k,"regulation_top_k":regulation_top_k,"temporal_filter":temporal_filter,"target_date":target_date,"target_date_role":target_date_role,"unknown_temporal":unknown_temporal}).encode())
+        request={"query":query,"stock_code":stock_code,"report_year":report_year,"top_k":top_k,"annual_top_k":annual_top_k,"regulation_top_k":regulation_top_k,"temporal_filter":temporal_filter,"target_date":target_date,"target_date_role":target_date_role,"unknown_temporal":unknown_temporal}
+        if method is not None:
+            request.update(method=method,candidate_k=candidate_k)
+        self.docs.storage.write(request_key,dump(request).encode())
         extra=[str(self.docs.storage.path(request_key)),str(self.docs.storage.path(response_key))]
         if reference_root:
             # CLI-only trusted configuration, never accepted from HTTP input.
             extra += ["--reference-root",str(Path(reference_root).resolve())]
-        self._invoke("query",self.docs.storage.path(base),index["profile"],heartbeat=heartbeat,extra=extra,deadline=deadline)
+        runtime="bm25_diagnostic" if method=="bm25" else index["profile"]
+        self._invoke("query",self.docs.storage.path(base),runtime,heartbeat=heartbeat,extra=extra,deadline=deadline)
         result=json.loads(self.docs.storage.read(response_key))
         # Validate again after the model call; changed sources must not be served.
         self.validate(index_id)
